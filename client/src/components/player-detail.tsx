@@ -1,6 +1,8 @@
-import { Heart, Droplets, Zap, GlassWater, Timer, Footprints, Crosshair, Thermometer, Battery, CloudRain, Gauge } from "lucide-react";
+import { Heart, Droplets, Zap, GlassWater, Timer, Footprints, Crosshair, Thermometer, Battery, CloudRain, Gauge, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 import { HealthMetricCard } from "./health-metric-card";
 import { StatCard } from "./stat-card";
 import { SecondaryMetric } from "./secondary-metric";
@@ -75,11 +77,15 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1">
-            <span className="font-mono text-sm">{player.steamId}</span>
-            <span className="mx-2">·</span>
-            <span>Last seen {lastSeenText}</span>
+            Last seen {lastSeenText}
           </p>
         </div>
+        <Button variant="outline" asChild data-testid="button-view-history">
+          <Link href={`/history/${player.id}`}>
+            <History className="h-4 w-4 mr-2" />
+            View Full History
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -178,8 +184,9 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           title="Health & Blood Trends"
           dataKeys={[
             { key: "health", name: "Health", color: "hsl(var(--health))" },
-            { key: "blood", name: "Blood (÷50)", color: "hsl(var(--blood))" },
+            { key: "bloodPercent" as keyof PlayerSnapshot, name: "Blood %", color: "hsl(var(--blood))" },
           ]}
+          yAxisDomain={[0, 100]}
         />
         <HealthChart
           snapshots={snapshots}

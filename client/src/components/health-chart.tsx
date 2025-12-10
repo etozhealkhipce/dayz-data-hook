@@ -20,20 +20,28 @@ interface HealthChartProps {
     name: string;
     color: string;
   }[];
+  yAxisDomain?: [number, number];
 }
 
-export function HealthChart({ snapshots, title, dataKeys }: HealthChartProps) {
+export function HealthChart({ snapshots, title, dataKeys, yAxisDomain }: HealthChartProps) {
   const chartData = snapshots
     .slice()
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    .map((snapshot) => ({
-      time: format(new Date(snapshot.createdAt), "HH:mm"),
-      fullTime: format(new Date(snapshot.createdAt), "MMM d, HH:mm"),
-      ...dataKeys.reduce((acc, { key }) => {
-        acc[key as string] = snapshot[key];
-        return acc;
-      }, {} as Record<string, unknown>),
-    }));
+    .map((snapshot) => {
+      const baseData: Record<string, unknown> = {
+        time: format(new Date(snapshot.createdAt), "HH:mm"),
+        fullTime: format(new Date(snapshot.createdAt), "MMM d, HH:mm"),
+        bloodPercent: Math.round((snapshot.blood / 5000) * 100),
+        energyPercent: Math.round((snapshot.energy / 20000) * 100),
+        waterPercent: Math.round((snapshot.water / 5000) * 100),
+      };
+      dataKeys.forEach(({ key }) => {
+        if (!(key in baseData)) {
+          baseData[key as string] = snapshot[key as keyof PlayerSnapshot];
+        }
+      });
+      return baseData;
+    });
 
   if (chartData.length === 0) {
     return (
@@ -73,6 +81,7 @@ export function HealthChart({ snapshots, title, dataKeys }: HealthChartProps) {
                 tickLine={false}
                 axisLine={false}
                 width={50}
+                domain={yAxisDomain}
               />
               <Tooltip
                 contentStyle={{
