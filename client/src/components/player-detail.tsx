@@ -1,4 +1,4 @@
-import { Heart, Droplets, Zap, GlassWater, Timer, Footprints, Crosshair, Thermometer, Battery, CloudRain, Gauge, History } from "lucide-react";
+import { Heart, Droplets, Zap, GlassWater, Timer, Footprints, Crosshair, Thermometer, Gauge, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -152,7 +152,7 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <SecondaryMetric
           label="Shock"
           value={latestSnapshot.shock}
@@ -167,20 +167,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Thermometer}
           minValue={-100}
           maxValue={100}
-        />
-        <SecondaryMetric
-          label="Stamina"
-          value={latestSnapshot.stamina}
-          unit=""
-          icon={Battery}
-          maxValue={100}
-        />
-        <SecondaryMetric
-          label="Wetness"
-          value={latestSnapshot.wetness}
-          unit=""
-          icon={CloudRain}
-          maxValue={1}
         />
       </div>
 
