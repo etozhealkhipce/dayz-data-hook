@@ -111,7 +111,7 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           title="Energy"
           value={latestSnapshot.energy}
           maxValue={20000}
-          unit="kcal"
+          unit=""
           icon={Zap}
           colorClass="text-energy"
           bgColorClass="bg-energy/10"
