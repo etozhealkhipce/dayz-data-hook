@@ -181,20 +181,35 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <HealthChart
           snapshots={snapshots}
-          title="Health & Blood Trends"
+          title="Health"
           dataKeys={[
             { key: "health", name: "Health", color: "hsl(var(--health))" },
-            { key: "bloodPercent" as keyof PlayerSnapshot, name: "Blood %", color: "hsl(var(--blood))" },
           ]}
           yAxisDomain={[0, 100]}
         />
         <HealthChart
           snapshots={snapshots}
-          title="Energy & Hydration"
+          title="Blood"
           dataKeys={[
-            { key: "energy", name: "Energy (÷200)", color: "hsl(var(--energy))" },
-            { key: "water", name: "Water (÷50)", color: "hsl(var(--water))" },
+            { key: "blood", name: "Blood (ml)", color: "hsl(var(--blood))" },
           ]}
+          yAxisDomain={[0, 5000]}
+        />
+        <HealthChart
+          snapshots={snapshots}
+          title="Energy"
+          dataKeys={[
+            { key: "energy", name: "Energy", color: "hsl(var(--energy))" },
+          ]}
+          yAxisDomain={[0, 20000]}
+        />
+        <HealthChart
+          snapshots={snapshots}
+          title="Water"
+          dataKeys={[
+            { key: "water", name: "Water (ml)", color: "hsl(var(--water))" },
+          ]}
+          yAxisDomain={[0, 5000]}
         />
       </div>
 
