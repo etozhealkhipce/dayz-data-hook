@@ -51,6 +51,30 @@ export default {
           foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",
           border: "var(--destructive-border)",
         },
+        health: {
+          DEFAULT: "hsl(var(--health) / <alpha-value>)",
+          foreground: "hsl(var(--health-foreground) / <alpha-value>)",
+        },
+        blood: {
+          DEFAULT: "hsl(var(--blood) / <alpha-value>)",
+          foreground: "hsl(var(--blood-foreground) / <alpha-value>)",
+        },
+        energy: {
+          DEFAULT: "hsl(var(--energy) / <alpha-value>)",
+          foreground: "hsl(var(--energy-foreground) / <alpha-value>)",
+        },
+        water: {
+          DEFAULT: "hsl(var(--water) / <alpha-value>)",
+          foreground: "hsl(var(--water-foreground) / <alpha-value>)",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success) / <alpha-value>)",
+          foreground: "hsl(var(--success-foreground) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning) / <alpha-value>)",
+          foreground: "hsl(var(--warning-foreground) / <alpha-value>)",
+        },
         ring: "hsl(var(--ring) / <alpha-value>)",
         chart: {
           "1": "hsl(var(--chart-1) / <alpha-value>)",
