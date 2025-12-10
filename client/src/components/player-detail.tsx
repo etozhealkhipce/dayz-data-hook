@@ -32,6 +32,31 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+function getShockStatus(shock: number): { text: string; color: string } {
+  if (shock === 0) return { text: "Unconscious", color: "text-destructive" };
+  if (shock <= 20) return { text: "Critical", color: "text-destructive" };
+  if (shock <= 50) return { text: "Medium", color: "text-yellow-500" };
+  return { text: "Optimal", color: "text-success" };
+}
+
+function getHeatComfortStatus(value: number): { text: string; color: string } {
+  if (value >= -5 && value <= 15) return { text: "Optimal", color: "text-success" };
+  if (value >= -30 && value <= 40) return { text: "Moderate", color: "text-yellow-500" };
+  return { text: "Extreme", color: "text-destructive" };
+}
+
+function getStaminaStatus(value: number): { text: string; color: string } {
+  if (value >= 80) return { text: "Optimal", color: "text-success" };
+  if (value >= 40) return { text: "Low", color: "text-yellow-500" };
+  return { text: "Exhausted", color: "text-destructive" };
+}
+
+function getWetnessStatus(value: number): { text: string; color: string } {
+  if (value <= 0.1) return { text: "Dry", color: "text-success" };
+  if (value <= 0.5) return { text: "Damp", color: "text-yellow-500" };
+  return { text: "Soaked", color: "text-destructive" };
+}
+
 export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: PlayerDetailProps) {
   if (isLoading) {
     return (
@@ -97,6 +122,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Heart}
           colorClass="text-health"
           bgColorClass="bg-health/10"
+          optimalMin={75}
+          criticalMin={25}
         />
         <HealthMetricCard
           title="Blood"
@@ -106,6 +133,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Droplets}
           colorClass="text-blood"
           bgColorClass="bg-blood/10"
+          optimalMin={4000}
+          criticalMin={2500}
         />
         <HealthMetricCard
           title="Energy"
@@ -115,6 +144,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Zap}
           colorClass="text-energy"
           bgColorClass="bg-energy/10"
+          optimalMin={800}
+          criticalMin={300}
         />
         <HealthMetricCard
           title="Water"
@@ -124,6 +155,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={GlassWater}
           colorClass="text-water"
           bgColorClass="bg-water/10"
+          optimalMin={1200}
+          criticalMin={500}
         />
       </div>
 
@@ -134,6 +167,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           unit=""
           icon={Gauge}
           maxValue={100}
+          statusText={getShockStatus(latestSnapshot.shock).text}
+          statusColor={getShockStatus(latestSnapshot.shock).color}
         />
         <SecondaryMetric
           label="Heat Comfort"
@@ -142,6 +177,8 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Thermometer}
           minValue={-100}
           maxValue={100}
+          statusText={getHeatComfortStatus(latestSnapshot.heatComfort).text}
+          statusColor={getHeatComfortStatus(latestSnapshot.heatComfort).color}
         />
         <SecondaryMetric
           label="Stamina"
@@ -149,12 +186,16 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           unit=""
           icon={Battery}
           maxValue={100}
+          statusText={getStaminaStatus(latestSnapshot.stamina).text}
+          statusColor={getStaminaStatus(latestSnapshot.stamina).color}
         />
         <SecondaryMetric
           label="Wetness"
           value={latestSnapshot.wetness}
           unit=""
           icon={CloudRain}
+          statusText={getWetnessStatus(latestSnapshot.wetness).text}
+          statusColor={getWetnessStatus(latestSnapshot.wetness).color}
           maxValue={1}
         />
       </div>

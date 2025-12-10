@@ -8,6 +8,8 @@ interface SecondaryMetricProps {
   icon: LucideIcon;
   minValue?: number;
   maxValue?: number;
+  statusText?: string;
+  statusColor?: string;
 }
 
 export function SecondaryMetric({
@@ -17,6 +19,8 @@ export function SecondaryMetric({
   icon: Icon,
   minValue = 0,
   maxValue,
+  statusText,
+  statusColor,
 }: SecondaryMetricProps) {
   const displayValue = Math.round(value * 100) / 100;
   const range = maxValue !== undefined ? maxValue - minValue : null;
@@ -40,9 +44,16 @@ export function SecondaryMetric({
                   />
                 </div>
               )}
-              <span className="font-mono text-sm font-medium whitespace-nowrap" data-testid={`text-secondary-${label.toLowerCase().replace(/\s+/g, '-')}`}>
-                {displayValue}{unit}
-              </span>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="font-mono text-sm font-medium whitespace-nowrap" data-testid={`text-secondary-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  {displayValue}{unit}
+                </span>
+                {statusText && (
+                  <span className={`text-xs whitespace-nowrap ${statusColor || 'text-muted-foreground'}`}>
+                    {statusText}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

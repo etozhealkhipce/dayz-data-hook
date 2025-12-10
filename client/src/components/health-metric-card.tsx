@@ -11,6 +11,14 @@ interface HealthMetricCardProps {
   colorClass: string;
   bgColorClass: string;
   showProgress?: boolean;
+  optimalMin?: number;
+  criticalMin?: number;
+}
+
+function getHealthStatus(value: number, optimalMin: number, criticalMin: number): { text: string; color: string } {
+  if (value >= optimalMin) return { text: "Optimal", color: "text-success" };
+  if (value >= criticalMin) return { text: "Low", color: "text-yellow-500" };
+  return { text: "Critical", color: "text-destructive" };
 }
 
 export function HealthMetricCard({
@@ -22,9 +30,14 @@ export function HealthMetricCard({
   colorClass,
   bgColorClass,
   showProgress = true,
+  optimalMin,
+  criticalMin,
 }: HealthMetricCardProps) {
   const percentage = Math.min((value / maxValue) * 100, 100);
   const displayValue = value < 0 ? 0 : Math.round(value * 10) / 10;
+  const status = optimalMin !== undefined && criticalMin !== undefined 
+    ? getHealthStatus(value, optimalMin, criticalMin) 
+    : null;
 
   return (
     <Card className="overflow-visible">
@@ -50,9 +63,14 @@ export function HealthMetricCard({
                 '--progress-background': `hsl(var(--${title.toLowerCase()}))` 
               } as React.CSSProperties}
             />
-            <p className="text-xs text-muted-foreground text-right">
-              {Math.round(percentage)}% of max
-            </p>
+            <div className="flex items-center justify-between">
+              {status && (
+                <span className={`text-xs font-medium ${status.color}`}>{status.text}</span>
+              )}
+              <p className="text-xs text-muted-foreground text-right flex-1">
+                {Math.round(percentage)}% of max
+              </p>
+            </div>
           </div>
         )}
       </CardContent>
