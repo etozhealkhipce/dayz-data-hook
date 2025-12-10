@@ -6,6 +6,7 @@ interface SecondaryMetricProps {
   value: number;
   unit: string;
   icon: LucideIcon;
+  minValue?: number;
   maxValue?: number;
 }
 
@@ -14,10 +15,12 @@ export function SecondaryMetric({
   value,
   unit,
   icon: Icon,
+  minValue = 0,
   maxValue,
 }: SecondaryMetricProps) {
   const displayValue = Math.round(value * 100) / 100;
-  const percentage = maxValue ? Math.min((value / maxValue) * 100, 100) : null;
+  const range = maxValue !== undefined ? maxValue - minValue : null;
+  const percentage = range !== null ? Math.min(Math.max(((value - minValue) / range) * 100, 0), 100) : null;
 
   return (
     <Card className="overflow-visible">

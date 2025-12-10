@@ -136,10 +136,12 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           maxValue={100}
         />
         <SecondaryMetric
-          label="Temperature"
+          label="Heat Comfort"
           value={latestSnapshot.heatComfort}
-          unit="°C"
+          unit=""
           icon={Thermometer}
+          minValue={-100}
+          maxValue={100}
         />
         <SecondaryMetric
           label="Stamina"
@@ -151,9 +153,9 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
         <SecondaryMetric
           label="Wetness"
           value={latestSnapshot.wetness}
-          unit="%"
+          unit=""
           icon={CloudRain}
-          maxValue={100}
+          maxValue={1}
         />
       </div>
 

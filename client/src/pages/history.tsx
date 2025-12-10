@@ -128,14 +128,14 @@ export default function History() {
       dataKey: "wetness",
       color: "hsl(var(--chart-4))",
       icon: CloudRain,
-      domain: [0, 100] as [number, number],
-      suffix: "%",
+      domain: [0, 1] as [number, number],
     },
     {
       title: "Heat Comfort",
       dataKey: "heatComfort",
       color: "hsl(var(--chart-2))",
       icon: Thermometer,
+      domain: [-100, 100] as [number, number],
     },
   ];
 
