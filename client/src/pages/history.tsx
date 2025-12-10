@@ -100,7 +100,7 @@ export default function History() {
       dataKey: "energy",
       color: "hsl(var(--energy))",
       icon: Zap,
-      domain: [0, 20000] as [number, number],
+      domain: [0, 5000] as [number, number],
     },
     {
       title: "Water",

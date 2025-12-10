@@ -135,7 +135,7 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
         <HealthMetricCard
           title="Energy"
           value={latestSnapshot.energy}
-          maxValue={20000}
+          maxValue={5000}
           unit=""
           icon={Zap}
           colorClass="text-energy"
@@ -214,7 +214,7 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           dataKeys={[
             { key: "energy", name: "Energy", color: "hsl(var(--energy))" },
           ]}
-          yAxisDomain={[0, 20000]}
+          yAxisDomain={[0, 5000]}
         />
         <HealthChart
           snapshots={snapshots}

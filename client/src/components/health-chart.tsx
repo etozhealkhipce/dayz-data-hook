@@ -32,7 +32,7 @@ export function HealthChart({ snapshots, title, dataKeys, yAxisDomain }: HealthC
         time: format(new Date(snapshot.createdAt), "HH:mm"),
         fullTime: format(new Date(snapshot.createdAt), "MMM d, HH:mm"),
         bloodPercent: Math.round((snapshot.blood / 5000) * 100),
-        energyPercent: Math.round((snapshot.energy / 20000) * 100),
+        energyPercent: Math.round((snapshot.energy / 5000) * 100),
         waterPercent: Math.round((snapshot.water / 5000) * 100),
       };
       dataKeys.forEach(({ key }) => {
