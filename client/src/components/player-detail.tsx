@@ -19,11 +19,11 @@ interface PlayerDetailProps {
   isLoading: boolean;
 }
 
-function formatPlaytime(minutes: number): string {
-  if (minutes < 0) return "0h 0m";
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  return `${hours}h ${mins}m`;
+function formatPlaytime(hours: number): string {
+  if (hours < 0) return "0h 0m";
+  const wholeHours = Math.floor(hours);
+  const mins = Math.round((hours - wholeHours) * 60);
+  return `${wholeHours}h ${mins}m`;
 }
 
 function formatDistance(meters: number): string {
