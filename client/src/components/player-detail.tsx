@@ -122,8 +122,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Heart}
           colorClass="text-health"
           bgColorClass="bg-health/10"
-          optimalMin={75}
-          criticalMin={25}
         />
         <HealthMetricCard
           title="Blood"
@@ -133,8 +131,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Droplets}
           colorClass="text-blood"
           bgColorClass="bg-blood/10"
-          optimalMin={4000}
-          criticalMin={2500}
         />
         <HealthMetricCard
           title="Energy"
@@ -144,8 +140,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Zap}
           colorClass="text-energy"
           bgColorClass="bg-energy/10"
-          optimalMin={800}
-          criticalMin={300}
         />
         <HealthMetricCard
           title="Water"
@@ -155,8 +149,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={GlassWater}
           colorClass="text-water"
           bgColorClass="bg-water/10"
-          optimalMin={1200}
-          criticalMin={500}
         />
       </div>
 
