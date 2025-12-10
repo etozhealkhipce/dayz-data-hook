@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,17 @@ import {
   Legend,
 } from "recharts";
 import type { Player, PlayerSnapshot } from "@shared/schema";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
+
+type PeriodOption = 1 | 3 | 7 | 30 | "all";
+
+const periodOptions: { value: PeriodOption; label: string }[] = [
+  { value: 1, label: "1 Day" },
+  { value: 3, label: "3 Days" },
+  { value: 7, label: "7 Days" },
+  { value: 30, label: "30 Days" },
+  { value: "all", label: "All Time" },
+];
 
 interface PlayerWithSnapshot extends Player {
   latestSnapshot: PlayerSnapshot | null;
@@ -24,13 +35,14 @@ interface PlayerWithSnapshot extends Player {
 export default function History() {
   const [, params] = useRoute("/history/:id");
   const playerId = params?.id ? parseInt(params.id) : null;
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>(7);
 
   const { data: players } = useQuery<PlayerWithSnapshot[]>({
     queryKey: ["/api/players"],
   });
 
   const { data: snapshots, isLoading } = useQuery<PlayerSnapshot[]>({
-    queryKey: [`/api/players/${playerId}/snapshots?limit=1000`],
+    queryKey: [`/api/players/${playerId}/snapshots?limit=10000`],
     enabled: !!playerId,
   });
 
@@ -44,8 +56,14 @@ export default function History() {
     );
   }
 
-  const chartData = snapshots
-    ?.slice()
+  const filteredSnapshots = snapshots?.filter((snapshot) => {
+    if (selectedPeriod === "all") return true;
+    const cutoffDate = subDays(new Date(), selectedPeriod);
+    return new Date(snapshot.createdAt) >= cutoffDate;
+  }) || [];
+
+  const chartData = filteredSnapshots
+    .slice()
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .map((snapshot) => ({
       time: format(new Date(snapshot.createdAt), "MM/dd HH:mm"),
@@ -58,7 +76,7 @@ export default function History() {
       stamina: snapshot.stamina,
       wetness: snapshot.wetness,
       heatComfort: snapshot.heatComfort,
-    })) || [];
+    }));
 
   const metrics = [
     {
@@ -125,19 +143,34 @@ export default function History() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-4 p-4 max-w-7xl mx-auto">
-          <Button variant="ghost" size="icon" asChild data-testid="button-back-home">
-            <Link href="/">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold" data-testid="text-history-title">
-              {player?.name || "Player"} - Full History
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {snapshots?.length || 0} data points
-            </p>
+        <div className="flex items-center justify-between gap-4 p-4 max-w-7xl mx-auto">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild data-testid="button-back-home">
+              <Link href="/">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold" data-testid="text-history-title">
+                {player?.name || "Player"} - Full History
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {filteredSnapshots.length} data points
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {periodOptions.map((option) => (
+              <Button
+                key={option.value}
+                variant={selectedPeriod === option.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedPeriod(option.value)}
+                data-testid={`button-period-${option.value}`}
+              >
+                {option.label}
+              </Button>
+            ))}
           </div>
         </div>
       </header>
