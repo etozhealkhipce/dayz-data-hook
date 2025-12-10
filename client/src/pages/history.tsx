@@ -16,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 import type { Player, PlayerSnapshot } from "@shared/schema";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 
 type PeriodOption = 1 | 3 | 7 | 30 | "all";
 
@@ -41,8 +41,15 @@ export default function History() {
     queryKey: ["/api/players"],
   });
 
+  const daysParam = selectedPeriod === "all" ? "" : `&days=${selectedPeriod}`;
+  
   const { data: snapshots, isLoading } = useQuery<PlayerSnapshot[]>({
-    queryKey: [`/api/players/${playerId}/snapshots?limit=10000`],
+    queryKey: ["/api/players", playerId, "snapshots", selectedPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/players/${playerId}/snapshots?limit=10000${daysParam}`);
+      if (!res.ok) throw new Error("Failed to fetch snapshots");
+      return res.json();
+    },
     enabled: !!playerId,
   });
 
@@ -56,13 +63,7 @@ export default function History() {
     );
   }
 
-  const filteredSnapshots = snapshots?.filter((snapshot) => {
-    if (selectedPeriod === "all") return true;
-    const cutoffDate = subDays(new Date(), selectedPeriod);
-    return new Date(snapshot.createdAt) >= cutoffDate;
-  }) || [];
-
-  const chartData = filteredSnapshots
+  const chartData = (snapshots || [])
     .slice()
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .map((snapshot) => ({
@@ -154,7 +155,7 @@ export default function History() {
                 {player?.name || "Player"} - Full History
               </h1>
               <p className="text-sm text-muted-foreground">
-                {filteredSnapshots.length} data points
+                {snapshots?.length || 0} data points
               </p>
             </div>
           </div>

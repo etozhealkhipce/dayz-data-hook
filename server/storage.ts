@@ -8,7 +8,7 @@ import {
   type PlayerWithLatestSnapshot,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, gte, and } from "drizzle-orm";
 
 export interface IStorage {
   getPlayers(): Promise<PlayerWithLatestSnapshot[]>;
@@ -16,7 +16,7 @@ export interface IStorage {
   getPlayerBySteamId(steamId: string): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayerLastSeen(id: number): Promise<void>;
-  getPlayerSnapshots(playerId: number, limit?: number): Promise<PlayerSnapshot[]>;
+  getPlayerSnapshots(playerId: number, limit?: number, days?: number): Promise<PlayerSnapshot[]>;
   createPlayerSnapshot(snapshot: InsertPlayerSnapshot): Promise<PlayerSnapshot>;
 }
 
@@ -62,11 +62,19 @@ export class DatabaseStorage implements IStorage {
     await db.update(players).set({ lastSeen: new Date() }).where(eq(players.id, id));
   }
 
-  async getPlayerSnapshots(playerId: number, limit: number = 100): Promise<PlayerSnapshot[]> {
+  async getPlayerSnapshots(playerId: number, limit: number = 100, days?: number): Promise<PlayerSnapshot[]> {
+    const conditions = [eq(playerSnapshots.playerId, playerId)];
+    
+    if (days && days > 0) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      conditions.push(gte(playerSnapshots.createdAt, cutoffDate));
+    }
+    
     return await db
       .select()
       .from(playerSnapshots)
-      .where(eq(playerSnapshots.playerId, playerId))
+      .where(and(...conditions))
       .orderBy(desc(playerSnapshots.createdAt))
       .limit(limit);
   }

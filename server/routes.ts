@@ -26,7 +26,8 @@ export async function registerRoutes(
       }
       
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
-      const snapshots = await storage.getPlayerSnapshots(playerId, limit);
+      const days = req.query.days ? parseInt(req.query.days as string, 10) : undefined;
+      const snapshots = await storage.getPlayerSnapshots(playerId, limit, days);
       res.json(snapshots);
     } catch (error) {
       console.error("Error fetching snapshots:", error);
