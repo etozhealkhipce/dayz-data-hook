@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { PlayerSidebar } from "@/components/player-sidebar";
 import { PlayerDetail } from "@/components/player-detail";
-import { WebhookInfo } from "@/components/webhook-info";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Activity, Heart } from "lucide-react";
 import type { PlayerWithLatestSnapshot, PlayerSnapshot } from "@shared/schema";
@@ -12,31 +11,38 @@ import { formatDistanceToNow } from "date-fns";
 export default function Home() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
-  const { data: players = [], isLoading: playersLoading } = useQuery<PlayerWithLatestSnapshot[]>({
+  const { data: players = [], isLoading: playersLoading } = useQuery<
+    PlayerWithLatestSnapshot[]
+  >({
     queryKey: ["/api/players"],
     refetchInterval: 30000,
   });
 
-  const { data: snapshots = [], isLoading: snapshotsLoading } = useQuery<PlayerSnapshot[]>({
+  const { data: snapshots = [], isLoading: snapshotsLoading } = useQuery<
+    PlayerSnapshot[]
+  >({
     queryKey: ["/api/players", selectedPlayerId, "snapshots"],
     enabled: selectedPlayerId !== null,
     refetchInterval: 30000,
   });
 
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
-  
+
   useEffect(() => {
     if (!selectedPlayerId && players.length > 0) {
       setSelectedPlayerId(players[0].id);
     }
   }, [players, selectedPlayerId]);
 
-  const lastUpdate = players.length > 0
-    ? formatDistanceToNow(
-        new Date(Math.max(...players.map((p) => new Date(p.lastSeen).getTime()))),
-        { addSuffix: true }
-      )
-    : null;
+  const lastUpdate =
+    players.length > 0
+      ? formatDistanceToNow(
+          new Date(
+            Math.max(...players.map((p) => new Date(p.lastSeen).getTime())),
+          ),
+          { addSuffix: true },
+        )
+      : null;
 
   const style = {
     "--sidebar-width": "20rem",
@@ -64,9 +70,6 @@ export default function Home() {
             <ThemeToggle />
           </header>
           <main className="flex-1 overflow-auto bg-muted/30">
-            <div className="p-4">
-              <WebhookInfo lastUpdate={lastUpdate} />
-            </div>
             {selectedPlayer ? (
               <PlayerDetail
                 player={selectedPlayer}
@@ -78,7 +81,9 @@ export default function Home() {
               <div className="flex items-center justify-center h-[calc(100vh-200px)]">
                 <div className="text-center">
                   <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h2 className="text-xl font-semibold mb-2">No Player Selected</h2>
+                  <h2 className="text-xl font-semibold mb-2">
+                    No Player Selected
+                  </h2>
                   <p className="text-muted-foreground">
                     {players.length === 0
                       ? "Waiting for data from your DayZ server..."
