@@ -159,8 +159,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           unit=""
           icon={Gauge}
           maxValue={100}
-          statusText={getShockStatus(latestSnapshot.shock).text}
-          statusColor={getShockStatus(latestSnapshot.shock).color}
         />
         <SecondaryMetric
           label="Heat Comfort"
@@ -169,8 +167,6 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           icon={Thermometer}
           minValue={-100}
           maxValue={100}
-          statusText={getHeatComfortStatus(latestSnapshot.heatComfort).text}
-          statusColor={getHeatComfortStatus(latestSnapshot.heatComfort).color}
         />
         <SecondaryMetric
           label="Stamina"
@@ -178,16 +174,12 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: P
           unit=""
           icon={Battery}
           maxValue={100}
-          statusText={getStaminaStatus(latestSnapshot.stamina).text}
-          statusColor={getStaminaStatus(latestSnapshot.stamina).color}
         />
         <SecondaryMetric
           label="Wetness"
           value={latestSnapshot.wetness}
           unit=""
           icon={CloudRain}
-          statusText={getWetnessStatus(latestSnapshot.wetness).text}
-          statusColor={getWetnessStatus(latestSnapshot.wetness).color}
           maxValue={1}
         />
       </div>

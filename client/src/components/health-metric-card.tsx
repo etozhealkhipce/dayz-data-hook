@@ -42,7 +42,7 @@ export function HealthMetricCard({
           </div>
         </div>
         {showProgress && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Progress 
               value={percentage} 
               className="h-2"
