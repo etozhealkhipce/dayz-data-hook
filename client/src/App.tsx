@@ -10,6 +10,7 @@ import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import ServerPage from "@/pages/server";
 import History from "@/pages/history";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -68,6 +69,9 @@ function Router() {
       </Route>
       <Route path="/server/:serverId/history/:playerId">
         <ProtectedRoute component={History} />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={Settings} />
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -1,8 +1,24 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { webhookPayloadSchema, registerSchema, loginSchema, createServerSchema } from "@shared/schema";
-import { passport, hashPassword } from "./auth";
+import { 
+  webhookPayloadSchema, 
+  registerSchema, 
+  loginSchema, 
+  createServerSchema,
+  verifyEmailSchema,
+  changePasswordSchema,
+  confirmPasswordChangeSchema,
+  changeEmailSchema,
+  confirmEmailChangeSchema
+} from "@shared/schema";
+import { passport, hashPassword, verifyPassword } from "./auth";
+import { 
+  sendVerificationEmail, 
+  sendPasswordChangeEmail, 
+  sendEmailChangeEmail, 
+  generateVerificationCode 
+} from "./email";
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) {
@@ -33,6 +49,19 @@ export async function registerRoutes(
       const passwordHash = await hashPassword(password);
       const admin = await storage.createAdmin({ email, passwordHash, name });
 
+      const code = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      
+      await storage.deleteVerificationTokensByType(admin.id, 'email_verification');
+      await storage.createVerificationToken({
+        adminId: admin.id,
+        code,
+        type: 'email_verification',
+        expiresAt,
+      });
+
+      const emailSent = await sendVerificationEmail(email, code, name);
+
       req.login(admin, (err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed after registration" });
@@ -40,7 +69,9 @@ export async function registerRoutes(
         return res.json({ 
           id: admin.id, 
           email: admin.email, 
-          name: admin.name 
+          name: admin.name,
+          isEmailVerified: admin.isEmailVerified,
+          emailSent
         });
       });
     } catch (error) {
@@ -69,7 +100,8 @@ export async function registerRoutes(
         return res.json({ 
           id: user.id, 
           email: user.email, 
-          name: user.name 
+          name: user.name,
+          isEmailVerified: user.isEmailVerified
         });
       });
     })(req, res, next);
@@ -89,10 +121,227 @@ export async function registerRoutes(
       return res.json({ 
         id: req.user.id, 
         email: req.user.email, 
-        name: req.user.name 
+        name: req.user.name,
+        isEmailVerified: req.user.isEmailVerified
       });
     }
     return res.status(401).json({ error: "Not authenticated" });
+  });
+
+  app.post("/api/auth/verify-email", requireAuth, async (req, res) => {
+    try {
+      const parseResult = verifyEmailSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const { code } = parseResult.data;
+      const token = await storage.getVerificationToken(req.user!.id, 'email_verification', code);
+      
+      if (!token) {
+        return res.status(400).json({ error: "Invalid or expired verification code" });
+      }
+
+      const updatedAdmin = await storage.verifyAdminEmail(req.user!.id);
+      await storage.deleteVerificationTokensByType(req.user!.id, 'email_verification');
+
+      if (updatedAdmin) {
+        await new Promise<void>((resolve) => {
+          req.login(updatedAdmin, (err) => {
+            if (err) {
+              console.error("Session refresh error:", err);
+            }
+            resolve();
+          });
+        });
+      }
+
+      return res.json({ success: true, message: "Email verified successfully", isEmailVerified: true });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", requireAuth, async (req, res) => {
+    try {
+      const admin = await storage.getAdminById(req.user!.id);
+      if (!admin) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (admin.isEmailVerified) {
+        return res.status(400).json({ error: "Email already verified" });
+      }
+
+      const code = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      
+      await storage.deleteVerificationTokensByType(admin.id, 'email_verification');
+      await storage.createVerificationToken({
+        adminId: admin.id,
+        code,
+        type: 'email_verification',
+        expiresAt,
+      });
+
+      const emailSent = await sendVerificationEmail(admin.email, code, admin.name);
+
+      res.json({ success: true, emailSent });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ error: "Failed to resend verification" });
+    }
+  });
+
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const parseResult = changePasswordSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const { currentPassword, newPassword } = parseResult.data;
+      const admin = await storage.getAdminById(req.user!.id);
+      
+      if (!admin) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isValid = await verifyPassword(currentPassword, admin.passwordHash);
+      if (!isValid) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+
+      const code = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      const newPasswordHash = await hashPassword(newPassword);
+      
+      await storage.deleteVerificationTokensByType(admin.id, 'password_change');
+      await storage.createVerificationToken({
+        adminId: admin.id,
+        code,
+        type: 'password_change',
+        newPasswordHash,
+        expiresAt,
+      });
+
+      const emailSent = await sendPasswordChangeEmail(admin.email, code, admin.name);
+
+      res.json({ success: true, emailSent, message: "Verification code sent to your email" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to initiate password change" });
+    }
+  });
+
+  app.post("/api/auth/confirm-password-change", requireAuth, async (req, res) => {
+    try {
+      const parseResult = confirmPasswordChangeSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const { code } = parseResult.data;
+      const token = await storage.getVerificationToken(req.user!.id, 'password_change', code);
+      
+      if (!token || !token.newPasswordHash) {
+        return res.status(400).json({ error: "Invalid or expired verification code" });
+      }
+
+      await storage.updateAdminPassword(req.user!.id, token.newPasswordHash);
+      await storage.deleteVerificationTokensByType(req.user!.id, 'password_change');
+
+      res.json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Confirm password change error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  app.post("/api/auth/change-email", requireAuth, async (req, res) => {
+    try {
+      const parseResult = changeEmailSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const { newEmail, password } = parseResult.data;
+      const admin = await storage.getAdminById(req.user!.id);
+      
+      if (!admin) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isValid = await verifyPassword(password, admin.passwordHash);
+      if (!isValid) {
+        return res.status(400).json({ error: "Password is incorrect" });
+      }
+
+      const existingAdmin = await storage.getAdminByEmail(newEmail);
+      if (existingAdmin) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+
+      const code = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      
+      await storage.deleteVerificationTokensByType(admin.id, 'email_change');
+      await storage.createVerificationToken({
+        adminId: admin.id,
+        code,
+        type: 'email_change',
+        newEmail,
+        expiresAt,
+      });
+
+      const emailSent = await sendEmailChangeEmail(newEmail, code, admin.name);
+
+      res.json({ success: true, emailSent, message: "Verification code sent to new email" });
+    } catch (error) {
+      console.error("Change email error:", error);
+      res.status(500).json({ error: "Failed to initiate email change" });
+    }
+  });
+
+  app.post("/api/auth/confirm-email-change", requireAuth, async (req, res) => {
+    try {
+      const parseResult = confirmEmailChangeSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const { code } = parseResult.data;
+      const token = await storage.getVerificationToken(req.user!.id, 'email_change', code);
+      
+      if (!token || !token.newEmail) {
+        return res.status(400).json({ error: "Invalid or expired verification code" });
+      }
+
+      const updatedAdmin = await storage.updateAdminEmail(req.user!.id, token.newEmail);
+      await storage.deleteVerificationTokensByType(req.user!.id, 'email_change');
+
+      if (updatedAdmin) {
+        await new Promise<void>((resolve) => {
+          req.login(updatedAdmin, (err) => {
+            if (err) {
+              console.error("Session refresh error:", err);
+            }
+            resolve();
+          });
+        });
+      }
+
+      return res.json({ 
+        success: true, 
+        message: "Email changed successfully", 
+        newEmail: token.newEmail,
+        isEmailVerified: false
+      });
+    } catch (error) {
+      console.error("Confirm email change error:", error);
+      return res.status(500).json({ error: "Failed to change email" });
+    }
   });
 
   app.get("/api/servers", requireAuth, async (req, res) => {
@@ -285,6 +534,16 @@ export async function registerRoutes(
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  setInterval(async () => {
+    try {
+      await storage.deleteExpiredTokens();
+    } catch (error) {
+      console.error("Failed to clean up expired tokens:", error);
+    }
+  }, 60 * 60 * 1000);
+
+  storage.deleteExpiredTokens().catch(console.error);
 
   return httpServer;
 }

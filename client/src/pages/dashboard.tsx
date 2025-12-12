@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Users, Copy, RefreshCw, Trash2, LogOut, ExternalLink } from "lucide-react";
+import { Plus, Server, Users, Copy, RefreshCw, Trash2, LogOut, ExternalLink, Settings, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -123,6 +123,9 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
             <ThemeToggle />
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/settings")} data-testid="button-settings">
+              <Settings className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={handleLogout} data-testid="button-logout">
               <LogOut className="h-4 w-4 mr-2" />
               Logout
@@ -132,6 +135,27 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {!user.isEmailVerified && (
+          <div className="mb-6 p-4 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-md flex items-center justify-between gap-4 flex-wrap" data-testid="banner-email-verification">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">Verify your email address</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">Please verify your email to unlock all features.</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setLocation("/settings")}
+              className="border-amber-400 text-amber-700 dark:border-amber-600 dark:text-amber-300"
+              data-testid="button-verify-email-banner"
+            >
+              Verify Now
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
           <div>
             <h2 className="text-2xl font-bold">Your Servers</h2>

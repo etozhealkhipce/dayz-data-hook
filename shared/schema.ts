@@ -9,6 +9,18 @@ export const admins = pgTable("admins", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  isEmailVerified: boolean("is_email_verified").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const verificationTokens = pgTable("verification_tokens", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull().references(() => admins.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 6 }).notNull(),
+  type: varchar("type", { length: 32 }).notNull(), // 'email_verification', 'password_change', 'email_change'
+  newEmail: varchar("new_email", { length: 255 }), // for email change requests
+  newPasswordHash: text("new_password_hash"), // for password change requests
+  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -54,6 +66,14 @@ export const playerSnapshots = pgTable("player_snapshots", {
 
 export const adminsRelations = relations(admins, ({ many }) => ({
   servers: many(servers),
+  verificationTokens: many(verificationTokens),
+}));
+
+export const verificationTokensRelations = relations(verificationTokens, ({ one }) => ({
+  admin: one(admins, {
+    fields: [verificationTokens.adminId],
+    references: [admins.id],
+  }),
 }));
 
 export const serversRelations = relations(servers, ({ one, many }) => ({
@@ -82,6 +102,12 @@ export const playerSnapshotsRelations = relations(playerSnapshots, ({ one }) => 
 export const insertAdminSchema = createInsertSchema(admins).omit({
   id: true,
   createdAt: true,
+  isEmailVerified: true,
+});
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertServerSchema = createInsertSchema(servers).omit({
@@ -102,6 +128,8 @@ export const insertPlayerSnapshotSchema = createInsertSchema(playerSnapshots).om
 
 export type InsertAdmin = z.infer<typeof insertAdminSchema>;
 export type Admin = typeof admins.$inferSelect;
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
@@ -158,3 +186,27 @@ export const loginSchema = z.object({
 export const createServerSchema = z.object({
   name: z.string().min(1, "Server name is required").max(100, "Server name too long"),
 });
+
+export const verifyEmailSchema = z.object({
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+});
+
+export const confirmPasswordChangeSchema = z.object({
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export const changeEmailSchema = z.object({
+  newEmail: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const confirmEmailChangeSchema = z.object({
+  code: z.string().length(6, "Code must be 6 digits"),
+});
+
+export const resendVerificationSchema = z.object({});

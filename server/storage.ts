@@ -3,6 +3,7 @@ import {
   servers,
   players,
   playerSnapshots,
+  verificationTokens,
   type Admin,
   type InsertAdmin,
   type Server,
@@ -13,15 +14,25 @@ import {
   type InsertPlayerSnapshot,
   type PlayerWithLatestSnapshot,
   type ServerWithPlayerCount,
+  type VerificationToken,
+  type InsertVerificationToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gte, and, count } from "drizzle-orm";
+import { eq, desc, gte, and, count, lt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export interface IStorage {
   createAdmin(admin: InsertAdmin): Promise<Admin>;
   getAdminByEmail(email: string): Promise<Admin | undefined>;
   getAdminById(id: number): Promise<Admin | undefined>;
+  updateAdminEmail(adminId: number, email: string): Promise<Admin | undefined>;
+  updateAdminPassword(adminId: number, passwordHash: string): Promise<Admin | undefined>;
+  verifyAdminEmail(adminId: number): Promise<Admin | undefined>;
+  
+  createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken>;
+  getVerificationToken(adminId: number, type: string, code: string): Promise<VerificationToken | undefined>;
+  deleteVerificationTokensByType(adminId: number, type: string): Promise<void>;
+  deleteExpiredTokens(): Promise<void>;
   
   createServer(adminId: number, name: string): Promise<Server>;
   getServersByAdminId(adminId: number): Promise<ServerWithPlayerCount[]>;
@@ -53,6 +64,63 @@ export class DatabaseStorage implements IStorage {
   async getAdminById(id: number): Promise<Admin | undefined> {
     const [admin] = await db.select().from(admins).where(eq(admins.id, id));
     return admin || undefined;
+  }
+
+  async updateAdminEmail(adminId: number, email: string): Promise<Admin | undefined> {
+    const [updated] = await db
+      .update(admins)
+      .set({ email, isEmailVerified: false })
+      .where(eq(admins.id, adminId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async updateAdminPassword(adminId: number, passwordHash: string): Promise<Admin | undefined> {
+    const [updated] = await db
+      .update(admins)
+      .set({ passwordHash })
+      .where(eq(admins.id, adminId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async verifyAdminEmail(adminId: number): Promise<Admin | undefined> {
+    const [updated] = await db
+      .update(admins)
+      .set({ isEmailVerified: true })
+      .where(eq(admins.id, adminId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken> {
+    const [created] = await db.insert(verificationTokens).values(token).returning();
+    return created;
+  }
+
+  async getVerificationToken(adminId: number, type: string, code: string): Promise<VerificationToken | undefined> {
+    const [token] = await db
+      .select()
+      .from(verificationTokens)
+      .where(
+        and(
+          eq(verificationTokens.adminId, adminId),
+          eq(verificationTokens.type, type),
+          eq(verificationTokens.code, code),
+          gte(verificationTokens.expiresAt, new Date())
+        )
+      );
+    return token || undefined;
+  }
+
+  async deleteVerificationTokensByType(adminId: number, type: string): Promise<void> {
+    await db
+      .delete(verificationTokens)
+      .where(and(eq(verificationTokens.adminId, adminId), eq(verificationTokens.type, type)));
+  }
+
+  async deleteExpiredTokens(): Promise<void> {
+    await db.delete(verificationTokens).where(lt(verificationTokens.expiresAt, new Date()));
   }
 
   async createServer(adminId: number, name: string): Promise<Server> {
