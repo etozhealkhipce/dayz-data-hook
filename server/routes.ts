@@ -10,7 +10,9 @@ import {
   changePasswordSchema,
   confirmPasswordChangeSchema,
   changeEmailSchema,
-  confirmEmailChangeSchema
+  confirmEmailChangeSchema,
+  addServerAdminSchema,
+  removeServerAdminSchema
 } from "@shared/schema";
 import { passport, hashPassword, verifyPassword } from "./auth";
 import { 
@@ -414,8 +416,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid server ID" });
       }
 
-      const server = await storage.getServerById(serverId);
-      if (!server || server.adminId !== req.user!.id) {
+      const hasAccess = await storage.isServerAdmin(serverId, req.user!.id);
+      if (!hasAccess) {
         return res.status(404).json({ error: "Server not found" });
       }
 
@@ -435,8 +437,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid ID" });
       }
 
-      const server = await storage.getServerById(serverId);
-      if (!server || server.adminId !== req.user!.id) {
+      const hasAccess = await storage.isServerAdmin(serverId, req.user!.id);
+      if (!hasAccess) {
         return res.status(404).json({ error: "Server not found" });
       }
 
@@ -452,6 +454,97 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching snapshots:", error);
       res.status(500).json({ error: "Failed to fetch snapshots" });
+    }
+  });
+
+  app.post("/api/servers/:id/admins", requireAuth, async (req, res) => {
+    try {
+      const serverId = parseInt(req.params.id, 10);
+      if (isNaN(serverId)) {
+        return res.status(400).json({ error: "Invalid server ID" });
+      }
+
+      const isOwner = await storage.isServerOwner(serverId, req.user!.id);
+      if (!isOwner) {
+        return res.status(403).json({ error: "Only server owner can add admins" });
+      }
+
+      const parseResult = addServerAdminSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid input", details: parseResult.error.errors });
+      }
+
+      const adminToAdd = await storage.getAdminByEmail(parseResult.data.email);
+      if (!adminToAdd) {
+        return res.status(404).json({ error: "User not found with this email" });
+      }
+
+      if (adminToAdd.id === req.user!.id) {
+        return res.status(400).json({ error: "You are already the owner" });
+      }
+
+      const added = await storage.addServerAdmin(serverId, adminToAdd.id);
+      if (!added) {
+        return res.status(400).json({ error: "User is already an admin of this server" });
+      }
+
+      res.json({ success: true, admin: { id: adminToAdd.id, email: adminToAdd.email, name: adminToAdd.name } });
+    } catch (error) {
+      console.error("Error adding server admin:", error);
+      res.status(500).json({ error: "Failed to add admin" });
+    }
+  });
+
+  app.delete("/api/servers/:id/admins/:adminId", requireAuth, async (req, res) => {
+    try {
+      const serverId = parseInt(req.params.id, 10);
+      const adminIdToRemove = parseInt(req.params.adminId, 10);
+      if (isNaN(serverId) || isNaN(adminIdToRemove)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+
+      const isOwner = await storage.isServerOwner(serverId, req.user!.id);
+      if (!isOwner) {
+        return res.status(403).json({ error: "Only server owner can remove admins" });
+      }
+
+      const removed = await storage.removeServerAdmin(serverId, adminIdToRemove);
+      if (!removed) {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing server admin:", error);
+      res.status(500).json({ error: "Failed to remove admin" });
+    }
+  });
+
+  app.get("/api/servers/:id/admins", requireAuth, async (req, res) => {
+    try {
+      const serverId = parseInt(req.params.id, 10);
+      if (isNaN(serverId)) {
+        return res.status(400).json({ error: "Invalid server ID" });
+      }
+
+      const hasAccess = await storage.isServerAdmin(serverId, req.user!.id);
+      if (!hasAccess) {
+        return res.status(404).json({ error: "Server not found" });
+      }
+
+      const server = await storage.getServerById(serverId);
+      const admins = await storage.getServerAdmins(serverId);
+      
+      const owner = await storage.getAdminById(server!.adminId);
+      const allAdmins = [
+        { adminId: owner!.id, email: owner!.email, name: owner!.name, role: "owner" },
+        ...admins.map(a => ({ adminId: a.adminId, email: a.email, name: a.name, role: a.role }))
+      ];
+
+      res.json(allAdmins);
+    } catch (error) {
+      console.error("Error fetching server admins:", error);
+      res.status(500).json({ error: "Failed to fetch admins" });
     }
   });
 

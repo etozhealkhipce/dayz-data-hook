@@ -4,6 +4,7 @@ import {
   players,
   playerSnapshots,
   verificationTokens,
+  serverAdmins,
   type Admin,
   type InsertAdmin,
   type Server,
@@ -14,11 +15,13 @@ import {
   type InsertPlayerSnapshot,
   type PlayerWithLatestSnapshot,
   type ServerWithPlayerCount,
+  type ServerWithAdmins,
+  type ServerAdminWithEmail,
   type VerificationToken,
   type InsertVerificationToken,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, gte, and, count, lt } from "drizzle-orm";
+import { eq, desc, gte, and, count, lt, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export interface IStorage {
@@ -35,11 +38,17 @@ export interface IStorage {
   deleteExpiredTokens(): Promise<void>;
   
   createServer(adminId: number, name: string): Promise<Server>;
-  getServersByAdminId(adminId: number): Promise<ServerWithPlayerCount[]>;
+  getServersByAdminId(adminId: number): Promise<ServerWithAdmins[]>;
   getServerByWebhookId(webhookId: string): Promise<Server | undefined>;
   getServerById(id: number): Promise<Server | undefined>;
   regenerateWebhookId(serverId: number, adminId: number): Promise<Server | undefined>;
   deleteServer(serverId: number, adminId: number): Promise<boolean>;
+  
+  addServerAdmin(serverId: number, adminId: number, role?: string): Promise<boolean>;
+  removeServerAdmin(serverId: number, adminId: number): Promise<boolean>;
+  getServerAdmins(serverId: number): Promise<ServerAdminWithEmail[]>;
+  isServerAdmin(serverId: number, adminId: number): Promise<boolean>;
+  isServerOwner(serverId: number, adminId: number): Promise<boolean>;
   
   getPlayersByServerId(serverId: number): Promise<PlayerWithLatestSnapshot[]>;
   getPlayerById(id: number): Promise<Player | undefined>;
@@ -134,18 +143,35 @@ export class DatabaseStorage implements IStorage {
     return server;
   }
 
-  async getServersByAdminId(adminId: number): Promise<ServerWithPlayerCount[]> {
-    const serverList = await db.select().from(servers).where(eq(servers.adminId, adminId)).orderBy(desc(servers.createdAt));
+  async getServersByAdminId(adminId: number): Promise<ServerWithAdmins[]> {
+    const ownedServers = await db.select().from(servers).where(eq(servers.adminId, adminId));
+    const memberServers = await db
+      .select({ server: servers })
+      .from(serverAdmins)
+      .innerJoin(servers, eq(serverAdmins.serverId, servers.id))
+      .where(eq(serverAdmins.adminId, adminId));
     
-    const result: ServerWithPlayerCount[] = [];
-    for (const server of serverList) {
+    const allServerIds = new Set([
+      ...ownedServers.map(s => s.id),
+      ...memberServers.map(s => s.server.id)
+    ]);
+    
+    const result: ServerWithAdmins[] = [];
+    for (const serverId of allServerIds) {
+      const server = ownedServers.find(s => s.id === serverId) || memberServers.find(s => s.server.id === serverId)?.server;
+      if (!server) continue;
+      
       const [countResult] = await db.select({ count: count() }).from(players).where(eq(players.serverId, server.id));
+      const serverAdminsList = await this.getServerAdmins(server.id);
+      
       result.push({
         ...server,
         playerCount: countResult?.count || 0,
+        admins: serverAdminsList,
+        isOwner: server.adminId === adminId,
       });
     }
-    return result;
+    return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getServerByWebhookId(webhookId: string): Promise<Server | undefined> {
@@ -239,6 +265,61 @@ export class DatabaseStorage implements IStorage {
   async createPlayerSnapshot(snapshot: InsertPlayerSnapshot): Promise<PlayerSnapshot> {
     const [created] = await db.insert(playerSnapshots).values(snapshot).returning();
     return created;
+  }
+
+  async addServerAdmin(serverId: number, adminId: number, role: string = "member"): Promise<boolean> {
+    const existing = await db
+      .select()
+      .from(serverAdmins)
+      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)));
+    
+    if (existing.length > 0) return false;
+    
+    await db.insert(serverAdmins).values({ serverId, adminId, role });
+    return true;
+  }
+
+  async removeServerAdmin(serverId: number, adminId: number): Promise<boolean> {
+    const result = await db
+      .delete(serverAdmins)
+      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getServerAdmins(serverId: number): Promise<ServerAdminWithEmail[]> {
+    const result = await db
+      .select({
+        id: serverAdmins.id,
+        serverId: serverAdmins.serverId,
+        adminId: serverAdmins.adminId,
+        role: serverAdmins.role,
+        createdAt: serverAdmins.createdAt,
+        email: admins.email,
+        name: admins.name,
+      })
+      .from(serverAdmins)
+      .innerJoin(admins, eq(serverAdmins.adminId, admins.id))
+      .where(eq(serverAdmins.serverId, serverId));
+    
+    return result;
+  }
+
+  async isServerAdmin(serverId: number, adminId: number): Promise<boolean> {
+    const server = await this.getServerById(serverId);
+    if (server?.adminId === adminId) return true;
+    
+    const [result] = await db
+      .select()
+      .from(serverAdmins)
+      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)));
+    
+    return !!result;
+  }
+
+  async isServerOwner(serverId: number, adminId: number): Promise<boolean> {
+    const server = await this.getServerById(serverId);
+    return server?.adminId === adminId;
   }
 }
 
