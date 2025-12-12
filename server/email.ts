@@ -41,10 +41,16 @@ async function getResendClient() {
 
 export async function sendVerificationEmail(to: string, code: string, name: string): Promise<boolean> {
   try {
+    console.log(`[Email] Attempting to send verification email to: ${to}`);
     const { client, fromEmail } = await getResendClient();
+    console.log(`[Email] Got Resend client, fromEmail: ${fromEmail}`);
     
-    await client.emails.send({
-      from: fromEmail || 'noreply@resend.dev',
+    const senderEmail = fromEmail?.includes('@gmail.com') || fromEmail?.includes('@yahoo.com') || fromEmail?.includes('@hotmail.com')
+      ? 'onboarding@resend.dev' 
+      : (fromEmail || 'onboarding@resend.dev');
+    
+    const result = await client.emails.send({
+      from: senderEmail,
       to,
       subject: 'Verify your email - DayZ Tracker',
       html: `
@@ -60,6 +66,12 @@ export async function sendVerificationEmail(to: string, code: string, name: stri
       `
     });
     
+    if (result.error) {
+      console.error(`[Email] Resend API error:`, result.error);
+      return false;
+    }
+    
+    console.log(`[Email] Verification email sent successfully:`, result.data);
     return true;
   } catch (error) {
     console.error('Failed to send verification email:', error);
@@ -71,8 +83,12 @@ export async function sendPasswordChangeEmail(to: string, code: string, name: st
   try {
     const { client, fromEmail } = await getResendClient();
     
-    await client.emails.send({
-      from: fromEmail || 'noreply@resend.dev',
+    const senderEmail = fromEmail?.includes('@gmail.com') || fromEmail?.includes('@yahoo.com') || fromEmail?.includes('@hotmail.com')
+      ? 'onboarding@resend.dev' 
+      : (fromEmail || 'onboarding@resend.dev');
+    
+    const result = await client.emails.send({
+      from: senderEmail,
       to,
       subject: 'Password Change Confirmation - DayZ Tracker',
       html: `
@@ -89,6 +105,11 @@ export async function sendPasswordChangeEmail(to: string, code: string, name: st
       `
     });
     
+    if (result.error) {
+      console.error(`[Email] Resend API error:`, result.error);
+      return false;
+    }
+    
     return true;
   } catch (error) {
     console.error('Failed to send password change email:', error);
@@ -100,8 +121,12 @@ export async function sendEmailChangeEmail(to: string, code: string, name: strin
   try {
     const { client, fromEmail } = await getResendClient();
     
-    await client.emails.send({
-      from: fromEmail || 'noreply@resend.dev',
+    const senderEmail = fromEmail?.includes('@gmail.com') || fromEmail?.includes('@yahoo.com') || fromEmail?.includes('@hotmail.com')
+      ? 'onboarding@resend.dev' 
+      : (fromEmail || 'onboarding@resend.dev');
+    
+    const result = await client.emails.send({
+      from: senderEmail,
       to,
       subject: 'Confirm Your New Email - DayZ Tracker',
       html: `
@@ -117,6 +142,11 @@ export async function sendEmailChangeEmail(to: string, code: string, name: strin
         </div>
       `
     });
+    
+    if (result.error) {
+      console.error(`[Email] Resend API error:`, result.error);
+      return false;
+    }
     
     return true;
   } catch (error) {
