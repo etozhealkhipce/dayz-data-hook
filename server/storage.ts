@@ -157,7 +157,7 @@ export class DatabaseStorage implements IStorage {
     ]);
     
     const result: ServerWithAdmins[] = [];
-    for (const serverId of allServerIds) {
+    for (const serverId of Array.from(allServerIds)) {
       const server = ownedServers.find(s => s.id === serverId) || memberServers.find(s => s.server.id === serverId)?.server;
       if (!server) continue;
       

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Server, Users, Copy, RefreshCw, Trash2, LogOut, ExternalLink, Settings, AlertCircle } from "lucide-react";
+import { Plus, Server, Users, Copy, RefreshCw, Trash2, LogOut, ExternalLink, Settings, AlertCircle, UserPlus, Crown, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
-import type { ServerWithPlayerCount } from "@shared/schema";
+import type { ServerWithAdmins } from "@shared/schema";
 
 export default function Dashboard() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -40,10 +40,14 @@ export default function Dashboard() {
   const [newServerName, setNewServerName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: servers, isLoading } = useQuery<ServerWithPlayerCount[]>({
+  const { data: servers, isLoading } = useQuery<ServerWithAdmins[]>({
     queryKey: ["/api/servers"],
     enabled: !!user,
   });
+
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [selectedServer, setSelectedServer] = useState<ServerWithAdmins | null>(null);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
 
   const createServerMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -85,6 +89,34 @@ export default function Dashboard() {
     },
     onError: (error: any) => {
       toast({ variant: "destructive", title: "Failed to delete server", description: error.message });
+    },
+  });
+
+  const addAdminMutation = useMutation({
+    mutationFn: async ({ serverId, email }: { serverId: number; email: string }) => {
+      const res = await apiRequest("POST", `/api/servers/${serverId}/admins`, { email });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/servers"] });
+      setNewAdminEmail("");
+      toast({ title: "Admin added successfully" });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Failed to add admin", description: error.message });
+    },
+  });
+
+  const removeAdminMutation = useMutation({
+    mutationFn: async ({ serverId, adminId }: { serverId: number; adminId: number }) => {
+      await apiRequest("DELETE", `/api/servers/${serverId}/admins/${adminId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/servers"] });
+      toast({ title: "Admin removed" });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Failed to remove admin", description: error.message });
     },
   });
 
@@ -231,13 +263,21 @@ export default function Dashboard() {
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 flex-wrap">
                         {server.name}
+                        {server.isOwner && <Badge variant="default" className="text-xs"><Crown className="h-3 w-3 mr-1" />Owner</Badge>}
+                        {!server.isOwner && <Badge variant="outline" className="text-xs">Member</Badge>}
                         {server.isActive && <Badge variant="secondary" className="text-xs">Active</Badge>}
                       </CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <Users className="h-3 w-3" />
-                        {server.playerCount} players tracked
+                      <CardDescription className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {server.playerCount} players
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <UserPlus className="h-3 w-3" />
+                          {(server.admins?.length || 0) + 1} admins
+                        </span>
                       </CardDescription>
                     </div>
                   </div>
@@ -268,46 +308,137 @@ export default function Dashboard() {
                         View Players
                       </Link>
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => regenerateWebhookMutation.mutate(server.id)}
-                      disabled={regenerateWebhookMutation.isPending}
-                      data-testid={`button-regenerate-webhook-${server.id}`}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                      Regenerate
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" data-testid={`button-delete-server-${server.id}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete server?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete "{server.name}" and all its player data. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteServerMutation.mutate(server.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {server.isOwner && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedServer(server);
+                          setAdminDialogOpen(true);
+                        }}
+                        data-testid={`button-manage-admins-${server.id}`}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Admins
+                      </Button>
+                    )}
+                    {server.isOwner && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => regenerateWebhookMutation.mutate(server.id)}
+                        disabled={regenerateWebhookMutation.isPending}
+                        data-testid={`button-regenerate-webhook-${server.id}`}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Regenerate
+                      </Button>
+                    )}
+                    {server.isOwner && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" data-testid={`button-delete-server-${server.id}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete server?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete "{server.name}" and all its player data. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteServerMutation.mutate(server.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        <Dialog open={adminDialogOpen} onOpenChange={(open) => {
+          setAdminDialogOpen(open);
+          if (!open) {
+            setSelectedServer(null);
+            setNewAdminEmail("");
+          }
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Admins - {selectedServer?.name}</DialogTitle>
+              <DialogDescription>
+                Add or remove admins who can view this server's player data.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Current Admins</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                    <div>
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                    <Badge><Crown className="h-3 w-3 mr-1" />Owner</Badge>
+                  </div>
+                  {selectedServer?.admins?.map((admin) => (
+                    <div key={admin.adminId} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                      <div>
+                        <p className="text-sm font-medium">{admin.name}</p>
+                        <p className="text-xs text-muted-foreground">{admin.email}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAdminMutation.mutate({ serverId: selectedServer.id, adminId: admin.adminId })}
+                        disabled={removeAdminMutation.isPending}
+                        data-testid={`button-remove-admin-${admin.adminId}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Add Admin</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Admin email address"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    data-testid="input-admin-email"
+                  />
+                  <Button
+                    onClick={() => {
+                      if (selectedServer) {
+                        addAdminMutation.mutate({ serverId: selectedServer.id, email: newAdminEmail });
+                      }
+                    }}
+                    disabled={!newAdminEmail.trim() || addAdminMutation.isPending}
+                    data-testid="button-add-admin"
+                  >
+                    Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The user must already have an account to be added as admin.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
