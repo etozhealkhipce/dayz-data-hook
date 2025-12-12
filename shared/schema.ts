@@ -33,6 +33,14 @@ export const servers = pgTable("servers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const serverAdmins = pgTable("server_admins", {
+  id: serial("id").primaryKey(),
+  serverId: integer("server_id").notNull().references(() => servers.id, { onDelete: "cascade" }),
+  adminId: integer("admin_id").notNull().references(() => admins.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 32 }).notNull().default("member"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   serverId: integer("server_id").notNull().references(() => servers.id),
@@ -67,6 +75,7 @@ export const playerSnapshots = pgTable("player_snapshots", {
 export const adminsRelations = relations(admins, ({ many }) => ({
   servers: many(servers),
   verificationTokens: many(verificationTokens),
+  serverAdmins: many(serverAdmins),
 }));
 
 export const verificationTokensRelations = relations(verificationTokens, ({ one }) => ({
@@ -82,6 +91,18 @@ export const serversRelations = relations(servers, ({ one, many }) => ({
     references: [admins.id],
   }),
   players: many(players),
+  serverAdmins: many(serverAdmins),
+}));
+
+export const serverAdminsRelations = relations(serverAdmins, ({ one }) => ({
+  server: one(servers, {
+    fields: [serverAdmins.serverId],
+    references: [servers.id],
+  }),
+  admin: one(admins, {
+    fields: [serverAdmins.adminId],
+    references: [admins.id],
+  }),
 }));
 
 export const playersRelations = relations(players, ({ one, many }) => ({
@@ -116,6 +137,11 @@ export const insertServerSchema = createInsertSchema(servers).omit({
   webhookId: true,
 });
 
+export const insertServerAdminSchema = createInsertSchema(serverAdmins).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertPlayerSchema = createInsertSchema(players).omit({
   id: true,
   lastSeen: true,
@@ -132,6 +158,8 @@ export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSche
 export type VerificationToken = typeof verificationTokens.$inferSelect;
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type Server = typeof servers.$inferSelect;
+export type InsertServerAdmin = z.infer<typeof insertServerAdminSchema>;
+export type ServerAdmin = typeof serverAdmins.$inferSelect;
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type Player = typeof players.$inferSelect;
 export type InsertPlayerSnapshot = z.infer<typeof insertPlayerSnapshotSchema>;
@@ -172,6 +200,17 @@ export type ServerWithPlayerCount = Server & {
   playerCount: number;
 };
 
+export type ServerAdminWithEmail = ServerAdmin & {
+  email: string;
+  name: string;
+};
+
+export type ServerWithAdmins = Server & {
+  playerCount: number;
+  admins: ServerAdminWithEmail[];
+  isOwner: boolean;
+};
+
 export const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -210,3 +249,11 @@ export const confirmEmailChangeSchema = z.object({
 });
 
 export const resendVerificationSchema = z.object({});
+
+export const addServerAdminSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const removeServerAdminSchema = z.object({
+  adminId: z.number(),
+});
