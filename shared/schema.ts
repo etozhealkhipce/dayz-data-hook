@@ -1,30 +1,12 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, real, integer, timestamp, jsonb, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, real, integer, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const admins = pgTable("admins", {
-  id: serial("id").primaryKey(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const servers = pgTable("servers", {
-  id: serial("id").primaryKey(),
-  adminId: integer("admin_id").notNull().references(() => admins.id),
-  name: text("name").notNull(),
-  webhookId: varchar("webhook_id", { length: 64 }).notNull().unique(),
-  isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const players = pgTable("players", {
   id: serial("id").primaryKey(),
-  serverId: integer("server_id").notNull().references(() => servers.id),
-  steamId: varchar("steam_id", { length: 64 }).notNull(),
+  steamId: varchar("steam_id", { length: 64 }).notNull().unique(),
   name: text("name").notNull(),
   lastSeen: timestamp("last_seen").defaultNow().notNull(),
 });
@@ -52,23 +34,7 @@ export const playerSnapshots = pgTable("player_snapshots", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const adminsRelations = relations(admins, ({ many }) => ({
-  servers: many(servers),
-}));
-
-export const serversRelations = relations(servers, ({ one, many }) => ({
-  admin: one(admins, {
-    fields: [servers.adminId],
-    references: [admins.id],
-  }),
-  players: many(players),
-}));
-
-export const playersRelations = relations(players, ({ one, many }) => ({
-  server: one(servers, {
-    fields: [players.serverId],
-    references: [servers.id],
-  }),
+export const playersRelations = relations(players, ({ many }) => ({
   snapshots: many(playerSnapshots),
 }));
 
@@ -78,17 +44,6 @@ export const playerSnapshotsRelations = relations(playerSnapshots, ({ one }) => 
     references: [players.id],
   }),
 }));
-
-export const insertAdminSchema = createInsertSchema(admins).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertServerSchema = createInsertSchema(servers).omit({
-  id: true,
-  createdAt: true,
-  webhookId: true,
-});
 
 export const insertPlayerSchema = createInsertSchema(players).omit({
   id: true,
@@ -100,10 +55,6 @@ export const insertPlayerSnapshotSchema = createInsertSchema(playerSnapshots).om
   createdAt: true,
 });
 
-export type InsertAdmin = z.infer<typeof insertAdminSchema>;
-export type Admin = typeof admins.$inferSelect;
-export type InsertServer = z.infer<typeof insertServerSchema>;
-export type Server = typeof servers.$inferSelect;
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type Player = typeof players.$inferSelect;
 export type InsertPlayerSnapshot = z.infer<typeof insertPlayerSnapshotSchema>;
@@ -139,22 +90,3 @@ export type WebhookPlayer = z.infer<typeof webhookPlayerSchema>;
 export type PlayerWithLatestSnapshot = Player & {
   latestSnapshot: PlayerSnapshot | null;
 };
-
-export type ServerWithPlayerCount = Server & {
-  playerCount: number;
-};
-
-export const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-});
-
-export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-export const createServerSchema = z.object({
-  name: z.string().min(1, "Server name is required").max(100, "Server name too long"),
-});

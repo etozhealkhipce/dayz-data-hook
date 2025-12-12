@@ -17,7 +17,6 @@ interface PlayerDetailProps {
   latestSnapshot: PlayerSnapshot | null;
   snapshots: PlayerSnapshot[];
   isLoading: boolean;
-  serverId?: number;
 }
 
 function formatPlaytime(hours: number): string {
@@ -58,7 +57,7 @@ function getWetnessStatus(value: number): { text: string; color: string } {
   return { text: "Soaked", color: "text-destructive" };
 }
 
-export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading, serverId }: PlayerDetailProps) {
+export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading }: PlayerDetailProps) {
   if (isLoading) {
     return (
       <div className="p-8 space-y-8">
@@ -106,14 +105,12 @@ export function PlayerDetail({ player, latestSnapshot, snapshots, isLoading, ser
             Last seen {lastSeenText}
           </p>
         </div>
-        {serverId && (
-          <Button variant="outline" asChild data-testid="button-view-history">
-            <Link href={`/server/${serverId}/history/${player.id}`}>
-              <History className="h-4 w-4 mr-2" />
-              View Full History
-            </Link>
-          </Button>
-        )}
+        <Button variant="outline" asChild data-testid="button-view-history">
+          <Link href={`/history/${player.id}`}>
+            <History className="h-4 w-4 mr-2" />
+            View Full History
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
