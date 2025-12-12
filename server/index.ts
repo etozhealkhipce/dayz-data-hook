@@ -9,6 +9,8 @@ import MemoryStore from "memorystore";
 const app = express();
 const httpServer = createServer(app);
 
+app.set("trust proxy", 1);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -36,7 +38,7 @@ app.use(
       checkPeriod: 86400000,
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
