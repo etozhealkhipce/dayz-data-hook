@@ -10,14 +10,21 @@ A multi-tenant SaaS web application that receives player health data from DayZ s
 - **Servers**: Each server has a unique 32-character nanoid webhook URL for secure data ingestion
 - **Players & Snapshots**: Player data is scoped to servers, with full tenant isolation
 
+### Multi-Admin Support
+- **Roles**: Owner (full control) and Member (view-only)
+- **Owner**: Can add/remove members, regenerate webhook, delete server
+- **Members**: Can view player data but cannot modify server settings
+- Junction table `serverAdmins` links admins to servers with role field
+
 ### Security Features
 - Passport.js local strategy with bcrypt password hashing
 - Express-session for session management
-- Tenant isolation: All player data queries verify server ownership
+- Tenant isolation: All player data queries verify server ownership or membership
 - Webhook URLs are 32-character cryptographically random strings (nanoid)
 - Server admins can only access their own servers' data
 - Webhook can be regenerated to cut off leaked URLs
 - isActive flag to deactivate server webhooks
+- Role-based access control for multi-admin features
 
 ## Features
 - **Authentication**: Register, login, logout with session persistence
@@ -86,6 +93,14 @@ A multi-tenant SaaS web application that receives player health data from DayZ s
 - All health metrics (health, blood, shock, water, energy, etc.)
 - createdAt (timestamp)
 
+### server_admins
+- id (serial, primary key)
+- serverId (integer, foreign key to servers)
+- adminId (integer, foreign key to admins)
+- role (varchar, 'member')
+- createdAt (timestamp)
+- Unique constraint on (serverId, adminId)
+
 ## API Endpoints
 
 ### Authentication
@@ -97,8 +112,13 @@ A multi-tenant SaaS web application that receives player health data from DayZ s
 ### Server Management (requires auth)
 - `GET /api/servers` - List all servers for authenticated admin
 - `POST /api/servers` - Create new server
-- `POST /api/servers/:id/regenerate-webhook` - Generate new webhook URL
-- `DELETE /api/servers/:id` - Delete server and all its data
+- `POST /api/servers/:id/regenerate-webhook` - Generate new webhook URL (owner only)
+- `DELETE /api/servers/:id` - Delete server and all its data (owner only)
+
+### Admin Management (requires auth, owner only)
+- `GET /api/servers/:id/admins` - List all admins for a server
+- `POST /api/servers/:id/admins` - Add an admin by email
+- `DELETE /api/servers/:id/admins/:adminId` - Remove an admin
 
 ### Player Data (requires auth, verifies ownership)
 - `GET /api/servers/:id/players` - List all players with latest snapshot
