@@ -1,0 +1,126 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  NAMESPACE: sskd
+  BASE_REPO: etozhealkhipce/senior-script-kiddie-k3s
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: BUILD
+        id: build
+        run: |
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.repository_owner }} --password-stdin
+
+          TAG="sha-${GITHUB_SHA::7}"
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository }}"
+
+          docker build -t ${IMAGE}:${TAG} -t ${IMAGE}:latest .
+          docker push ${IMAGE}:${TAG}
+          docker push ${IMAGE}:latest
+
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: SECRETS
+        id: secrets
+        run: |
+          IFS=',' read -ra SECRET_NAMES <<< "DATABASE_URL,PGHOST,PGPASSWORD,PGUSER,POSTGRES_USER,SESSION_SECRET,RESEND_API_KEY,RESEND_FROM_EMAIL"
+
+          cat > /tmp/secrets.json << 'SECRETS_EOF'
+          ${{ toJSON(secrets) }}
+          SECRETS_EOF
+
+          SECRET_DATA=""
+          for secret_name in "${SECRET_NAMES[@]}"; do
+            secret_name=$(echo "$secret_name" | xargs)
+            value=$(jq -r --arg k "$secret_name" '.[$k]' /tmp/secrets.json)
+            
+            if [ -n "$value" ] && [ "$value" != "null" ]; then
+              encoded=$(echo -n "$value" | base64 -w 0)
+              SECRET_DATA="${SECRET_DATA}  ${secret_name}: ${encoded}\n"
+            fi
+          done
+
+          rm -f /tmp/secrets.json
+          echo "data=$(echo -e "$SECRET_DATA" | base64 -w 0)" >> $GITHUB_OUTPUT
+
+      - name: DEPLOY
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          TAG: ${{ steps.build.outputs.tag }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          SECRET_DATA: ${{ steps.secrets.outputs.data }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: TAG,REPO,OWNER,SECRET_DATA
+          script: |
+            set -e
+            export KUBECONFIG=~/.kube/config
+
+            echo "DEPLOYING MICROSERVICES..."
+
+            # Создать app secrets
+            if [ -n "$SECRET_DATA" ]; then
+              for APP in "dayz-tracker-app" "dayz-tracker-db"; do
+                cat << EOF | kubectl apply -f -
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: ${APP}-secrets
+              namespace: ${{ env.NAMESPACE }}
+            type: Opaque
+            data:
+            $(echo "$SECRET_DATA" | base64 -d)
+            EOF
+                echo "SECRETS CREATED FOR ${APP}"
+              done
+            fi
+
+            # секрет создаем
+            kubectl create secret docker-registry dayz-tracker-ghcr-secret \
+              --docker-server=${{ env.REGISTRY }} \
+              --docker-username=${OWNER} \
+              --docker-password=${{ secrets.GHCR_TOKEN }} \
+              -n ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+            cd /tmp && rm -rf deploy-dayz
+            mkdir deploy-dayz && cd deploy-dayz
+
+            git clone --depth 1 https://github.com/${{ env.BASE_REPO }}.git base
+            git clone --depth 1 https://github.com/${REPO}.git consumer
+
+            cd base/charts/sskd-app
+            helm dependency update
+
+            echo "1/2 DEPLOYING DATABASE..."
+            helm upgrade --install dayz-tracker-db . \
+              --namespace ${{ env.NAMESPACE }} \
+              -f /tmp/deploy-dayz/consumer/deploy/values-database.yml \
+              --wait --timeout 5m
+
+            echo "WAITING FOR DATABASE TO BE READY..."
+            kubectl wait --for=condition=ready pod -l app=dayz-tracker-db -n ${{ env.NAMESPACE }} --timeout=300s
+
+            echo "2/2 DEPLOYING APP (Backend + Frontend)..."
+            helm upgrade --install dayz-tracker-app . \
+              --namespace ${{ env.NAMESPACE }} \
+              -f /tmp/deploy-dayz/consumer/deploy/values.yml \
+              --set app.image.tag=${TAG} \
+              --wait --timeout 5m
+
+            echo "COMPLETE!"
+            kubectl get pods -n ${{ env.NAMESPACE }} -l 'app in (dayz-tracker-app,dayz-tracker-db)'
+
+            rm -rf /tmp/deploy-dayz

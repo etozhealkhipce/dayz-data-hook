@@ -1,0 +1,43 @@
+app:
+  name: dayz-tracker-app
+  namespace: sskd
+  replicas: 2
+  port: 5000
+  healthPath: /health
+
+  image:
+    repository: ghcr.io/etozhealkhipce/dayz-data-hook
+    tag: latest
+    pullPolicy: Always
+
+  initContainers:
+    - name: migrate
+      image: ghcr.io/etozhealkhipce/dayz-data-hook/backend:latest
+      command: ["sh", "-c"]
+      args:
+        - |
+          apk add --no-cache postgresql-client
+          echo "WAITING FOR DATABASE..."
+          until pg_isready -h dayz-tracker-db -p 5432 -U "${POSTGRES_USER}" 2>/dev/null; do
+            echo "DATABASE UNAVAILABLE - SLEEPING"
+            sleep 2
+          done
+          echo "RUNNING MIGRATIONS..."
+          npx drizzle-kit push
+          echo "MIGRATIONS COMPLETE"
+
+  env:
+    NODE_ENV: production
+    PORT: "5000"
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  ingress:
+    enabled: true
+    host: dayz-tracker-app.sskd.tech

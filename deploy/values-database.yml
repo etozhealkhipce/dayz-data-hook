@@ -1,0 +1,31 @@
+app:
+  name: dayz-tracker-db
+  namespace: sskd
+  replicas: 1
+  port: 5432
+  healthPath: /
+
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+
+  env:
+    POSTGRES_DB: dayz_tracker
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "200m"
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+    mountPath: /var/lib/postgresql/data
+
+  ingress:
+    enabled: false
