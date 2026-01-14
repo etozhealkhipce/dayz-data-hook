@@ -8,7 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   NAMESPACE: sskd
-  BASE_REPO: etozhealkhipce/dayz-data-hook
+  BASE_REPO: etozhealkhipce/senior-script-kiddie-k3s
 
 jobs:
   build-and-deploy:
