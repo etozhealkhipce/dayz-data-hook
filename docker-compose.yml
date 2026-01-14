@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: dayz_tracker
       POSTGRES_USER: ${POSTGRES_USER:-dayz_admin}
-      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -34,13 +34,13 @@ services:
       database:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-dayz_admin}:${PGPASSWORD:-postgres}@database:5432/dayz_tracker
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dayz_admin}:${POSTGRES_PASSWORD:-postgres}@database:5432/dayz_tracker
       PGHOST: database
       PGPORT: 5432
       PGDATABASE: dayz_tracker
       PGUSER: ${POSTGRES_USER:-dayz_admin}
       POSTGRES_USER: ${POSTGRES_USER:-dayz_admin}
-      PGPASSWORD: ${PGPASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     networks:
       - dayz-network
 
@@ -55,13 +55,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-dayz_admin}:${PGPASSWORD:-postgres}@database:5432/dayz_tracker
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dayz_admin}:${POSTGRES_PASSWORD:-postgres}@database:5432/dayz_tracker
       PGHOST: database
       PGPORT: 5432
       PGDATABASE: dayz_tracker
       PGUSER: ${POSTGRES_USER:-dayz_admin}
       POSTGRES_USER: ${POSTGRES_USER:-dayz_admin}
-      PGPASSWORD: ${PGPASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-in-production}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
