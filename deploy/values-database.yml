@@ -10,6 +10,8 @@ app:
     tag: 16-alpine
     pullPolicy: IfNotPresent
 
+  imagePullSecrets: []
+
   env:
     POSTGRES_DB: dayz_tracker
 

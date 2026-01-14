@@ -10,9 +10,12 @@ app:
     tag: latest
     pullPolicy: Always
 
+  imagePullSecrets:
+    - name: dayz-tracker-ghcr-secret
+
   initContainers:
     - name: migrate
-      image: ghcr.io/etozhealkhipce/dayz-data-hook/backend:latest
+      image: ghcr.io/etozhealkhipce/dayz-data-hook:latest
       command: ["sh", "-c"]
       args:
         - |
