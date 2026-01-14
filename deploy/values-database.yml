@@ -3,7 +3,6 @@ app:
   namespace: sskd
   replicas: 1
   port: 5432
-  healthPath: /
 
   image:
     repository: postgres
@@ -14,6 +13,9 @@ app:
 
   env:
     POSTGRES_DB: dayz_tracker
+
+  livenessProbe: null
+  readinessProbe: null
 
   resources:
     requests:
