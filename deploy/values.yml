@@ -21,7 +21,7 @@ app:
         - |
           apk add --no-cache postgresql-client
           echo "WAITING FOR DATABASE..."
-          until pg_isready -h dayz-tracker-db -p 5432 -U "${PGUSER}" 2>/dev/null; do
+          until pg_isready -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" 2>/dev/null; do
             echo "DATABASE UNAVAILABLE - SLEEPING"
             sleep 2
           done
@@ -32,6 +32,34 @@ app:
   env:
     NODE_ENV: production
     PORT: "5000"
+    PGHOST:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGHOST
+    PGPORT:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGPORT
+    PGDATABASE:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGDATABASE
+    PGUSER:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGUSER
+    PGPASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGPASSWORD
+  envFrom:
+    - secretRef:
+        name: dayz-tracker-db-secrets
 
   resources:
     requests:
