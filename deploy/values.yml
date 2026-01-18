@@ -46,4 +46,4 @@ app:
 
   ingress:
     enabled: true
-    host: dayz-tracker-app.sskd.tech
+    host: dayz-logger.sskd.tech
