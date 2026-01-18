@@ -27,24 +27,6 @@ app:
         secretKeyRef:
           name: dayz-tracker-db-secrets
           key: PGPASSWORD
-    PGHOST:
-      valueFrom:
-        secretKeyRef:
-          name: dayz-tracker-db-secrets
-          key: PGHOST
-    PGPORT:
-      valueFrom:
-        secretKeyRef:
-          name: dayz-tracker-db-secrets
-          key: PGPORT
-    PGDATABASE:
-      valueFrom:
-        secretKeyRef:
-          name: dayz-tracker-db-secrets
-          key: PGDATABASE
-  envFrom:
-    - secretRef:
-        name: dayz-tracker-db-secrets
 
   livenessProbe: null
   readinessProbe: null
