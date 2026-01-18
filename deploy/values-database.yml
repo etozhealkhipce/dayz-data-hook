@@ -12,7 +12,11 @@ app:
   imagePullSecrets: []
 
   env:
-    POSTGRES_DB: dayz_tracker
+    POSTGRES_DB:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGDATABASE
     POSTGRES_USER:
       valueFrom:
         secretKeyRef:
@@ -23,6 +27,21 @@ app:
         secretKeyRef:
           name: dayz-tracker-db-secrets
           key: PGPASSWORD
+    PGHOST:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGHOST
+    PGPORT:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGPORT
+    PGDATABASE:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGDATABASE
   envFrom:
     - secretRef:
         name: dayz-tracker-db-secrets
