@@ -11,7 +11,7 @@ function getDatabaseUrl(): string {
   const port = process.env.PGPORT || "5432";
   const database = process.env.PGDATABASE;
   const user = process.env.PGUSER;
-  const password = process.env.POSTGRES_PASSWORD;
+  const password = process.env.PGPASSWORD;
 
   if (!database || !user) {
     throw new Error(

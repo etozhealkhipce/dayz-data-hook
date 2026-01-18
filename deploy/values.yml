@@ -1,7 +1,7 @@
 app:
   name: dayz-tracker-app
   namespace: sskd
-  replicas: 2
+  replicas: 1
   port: 5000
   healthPath: /health
 
@@ -21,7 +21,7 @@ app:
         - |
           apk add --no-cache postgresql-client
           echo "WAITING FOR DATABASE..."
-          until pg_isready -h dayz-tracker-db -p 5432 -U "${POSTGRES_USER}" 2>/dev/null; do
+          until pg_isready -h dayz-tracker-db -p 5432 -U "${PGUSER}" 2>/dev/null; do
             echo "DATABASE UNAVAILABLE - SLEEPING"
             sleep 2
           done
