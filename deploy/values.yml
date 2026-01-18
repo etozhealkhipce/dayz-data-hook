@@ -3,7 +3,7 @@ app:
   namespace: sskd
   replicas: 1
   port: 5000
-  healthPath: /health
+  healthPath: /api/health
 
   image:
     repository: ghcr.io/etozhealkhipce/dayz-data-hook
