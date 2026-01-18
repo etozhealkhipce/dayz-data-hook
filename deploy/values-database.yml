@@ -13,6 +13,19 @@ app:
 
   env:
     POSTGRES_DB: dayz_tracker
+    POSTGRES_USER:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGUSER
+    POSTGRES_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: dayz-tracker-db-secrets
+          key: PGPASSWORD
+  envFrom:
+    - secretRef:
+        name: dayz-tracker-db-secrets
 
   livenessProbe: null
   readinessProbe: null
