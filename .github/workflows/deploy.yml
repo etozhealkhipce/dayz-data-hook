@@ -11,8 +11,10 @@ env:
   BASE_REPO: etozhealkhipce/senior-script-kiddie-k3s
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.build.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +32,10 @@ jobs:
 
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: SECRETS
         id: secrets
         run: |
@@ -56,7 +62,7 @@ jobs:
       - name: DEPLOY
         uses: appleboy/ssh-action@v1.0.3
         env:
-          TAG: ${{ steps.build.outputs.tag }}
+          TAG: ${{ needs.build.outputs.tag }}
           REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
           SECRET_DATA: ${{ steps.secrets.outputs.data }}

@@ -44,33 +44,14 @@ COPY drizzle.config.ts ./
 RUN npm run build
 
 ###################
-# MIGRATE (для миграций нужны все зависимости)
-###################
-
-FROM base AS migrate
-WORKDIR /app
-
-# Установка postgresql-client для миграций
-RUN apk add --no-cache postgresql-client
-
-# Все зависимости (включая drizzle-kit)
-COPY --from=deps /deps/node_modules ./node_modules
-
-# Конфиги для миграций
-COPY --from=build /build/drizzle.config.ts ./drizzle.config.ts
-COPY --from=build /build/shared ./shared
-COPY package.json ./
-
-ENV NODE_ENV=production
-
-###################
 # PRODUCTION
 ###################
 
 FROM base AS production
 WORKDIR /app
 
-RUN apk add --no-cache tini wget && \
+# tini, wget, postgresql-client (для init-контейнера миграций: pg_isready + drizzle-kit push)
+RUN apk add --no-cache tini wget postgresql-client && \
     rm -rf /var/cache/apk/* /tmp/*
 
 # Production dependencies (только runtime, без dev)
