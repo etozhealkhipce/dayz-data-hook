@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 import { createServer } from "http";
 import { passport } from "./auth";
 import MemoryStore from "memorystore";
@@ -39,7 +38,7 @@ app.use(
       checkPeriod: 86400000,
     }),
     cookie: {
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: "lax",
@@ -104,10 +103,6 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV !== "production") {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
-  } else {
-    // Serve static files in production
-    const { serveStatic } = await import("./static");
-    serveStatic(app);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

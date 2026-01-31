@@ -32,9 +32,11 @@ export async function sendVerificationEmail(
         ? "onboarding@resend.dev"
         : fromEmail || "onboarding@resend.dev";
 
+    const temporaryEmail = process.env.RESEND_FROM_EMAIL;
+
     const result = await client.emails.send({
       from: senderEmail,
-      to,
+      to: temporaryEmail ?? "",
       subject: "Verify your email - DayZ Tracker",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

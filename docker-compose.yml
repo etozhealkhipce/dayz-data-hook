@@ -24,12 +24,7 @@ services:
       context: .
       target: migrate
     container_name: dayz-tracker-migrate
-    command:
-      [
-        "sh",
-        "-c",
-        "apk add --no-cache postgresql-client && until pg_isready -h database -p 5432 -U ${PGUSER}; do sleep 2; done && npx drizzle-kit push",
-      ]
+    command: ["npx", "drizzle-kit", "push"]
     depends_on:
       database:
         condition: service_healthy

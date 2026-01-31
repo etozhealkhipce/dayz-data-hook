@@ -50,6 +50,9 @@ RUN npm run build
 FROM base AS migrate
 WORKDIR /app
 
+# Установка postgresql-client для миграций
+RUN apk add --no-cache postgresql-client
+
 # Все зависимости (включая drizzle-kit)
 COPY --from=deps /deps/node_modules ./node_modules
 

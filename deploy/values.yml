@@ -19,7 +19,6 @@ app:
       command: ["sh", "-c"]
       args:
         - |
-          apk add --no-cache postgresql-client
           echo "WAITING FOR DATABASE..."
           until pg_isready -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" 2>/dev/null; do
             echo "DATABASE UNAVAILABLE - SLEEPING"

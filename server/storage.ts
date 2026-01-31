@@ -8,13 +8,11 @@ import {
   type Admin,
   type InsertAdmin,
   type Server,
-  type InsertServer,
   type Player,
   type InsertPlayer,
   type PlayerSnapshot,
   type InsertPlayerSnapshot,
   type PlayerWithLatestSnapshot,
-  type ServerWithPlayerCount,
   type ServerWithAdmins,
   type ServerAdminWithEmail,
   type VerificationToken,
@@ -29,33 +27,56 @@ export interface IStorage {
   getAdminByEmail(email: string): Promise<Admin | undefined>;
   getAdminById(id: number): Promise<Admin | undefined>;
   updateAdminEmail(adminId: number, email: string): Promise<Admin | undefined>;
-  updateAdminPassword(adminId: number, passwordHash: string): Promise<Admin | undefined>;
+  updateAdminPassword(
+    adminId: number,
+    passwordHash: string
+  ): Promise<Admin | undefined>;
   verifyAdminEmail(adminId: number): Promise<Admin | undefined>;
-  
-  createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken>;
-  getVerificationToken(adminId: number, type: string, code: string): Promise<VerificationToken | undefined>;
+
+  createVerificationToken(
+    token: InsertVerificationToken
+  ): Promise<VerificationToken>;
+  getVerificationToken(
+    adminId: number,
+    type: string,
+    code: string
+  ): Promise<VerificationToken | undefined>;
   deleteVerificationTokensByType(adminId: number, type: string): Promise<void>;
   deleteExpiredTokens(): Promise<void>;
-  
+
   createServer(adminId: number, name: string): Promise<Server>;
   getServersByAdminId(adminId: number): Promise<ServerWithAdmins[]>;
   getServerByWebhookId(webhookId: string): Promise<Server | undefined>;
   getServerById(id: number): Promise<Server | undefined>;
-  regenerateWebhookId(serverId: number, adminId: number): Promise<Server | undefined>;
+  regenerateWebhookId(
+    serverId: number,
+    adminId: number
+  ): Promise<Server | undefined>;
   deleteServer(serverId: number, adminId: number): Promise<boolean>;
-  
-  addServerAdmin(serverId: number, adminId: number, role?: string): Promise<boolean>;
+
+  addServerAdmin(
+    serverId: number,
+    adminId: number,
+    role?: string
+  ): Promise<boolean>;
   removeServerAdmin(serverId: number, adminId: number): Promise<boolean>;
   getServerAdmins(serverId: number): Promise<ServerAdminWithEmail[]>;
   isServerAdmin(serverId: number, adminId: number): Promise<boolean>;
   isServerOwner(serverId: number, adminId: number): Promise<boolean>;
-  
+
   getPlayersByServerId(serverId: number): Promise<PlayerWithLatestSnapshot[]>;
   getPlayerById(id: number): Promise<Player | undefined>;
-  getPlayerBySteamIdAndServerId(steamId: string, serverId: number): Promise<Player | undefined>;
+  getPlayerBySteamIdAndServerId(
+    steamId: string,
+    serverId: number
+  ): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayerLastSeen(id: number): Promise<void>;
-  getPlayerSnapshots(playerId: number, limit?: number, days?: number): Promise<PlayerSnapshot[]>;
+  getPlayerSnapshots(
+    playerId: number,
+    limit?: number,
+    days?: number
+  ): Promise<PlayerSnapshot[]>;
   createPlayerSnapshot(snapshot: InsertPlayerSnapshot): Promise<PlayerSnapshot>;
 }
 
@@ -66,7 +87,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdminByEmail(email: string): Promise<Admin | undefined> {
-    const [admin] = await db.select().from(admins).where(eq(admins.email, email));
+    const [admin] = await db
+      .select()
+      .from(admins)
+      .where(eq(admins.email, email));
     return admin || undefined;
   }
 
@@ -75,7 +99,10 @@ export class DatabaseStorage implements IStorage {
     return admin || undefined;
   }
 
-  async updateAdminEmail(adminId: number, email: string): Promise<Admin | undefined> {
+  async updateAdminEmail(
+    adminId: number,
+    email: string
+  ): Promise<Admin | undefined> {
     const [updated] = await db
       .update(admins)
       .set({ email, isEmailVerified: false })
@@ -84,7 +111,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async updateAdminPassword(adminId: number, passwordHash: string): Promise<Admin | undefined> {
+  async updateAdminPassword(
+    adminId: number,
+    passwordHash: string
+  ): Promise<Admin | undefined> {
     const [updated] = await db
       .update(admins)
       .set({ passwordHash })
@@ -102,12 +132,21 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async createVerificationToken(token: InsertVerificationToken): Promise<VerificationToken> {
-    const [created] = await db.insert(verificationTokens).values(token).returning();
+  async createVerificationToken(
+    token: InsertVerificationToken
+  ): Promise<VerificationToken> {
+    const [created] = await db
+      .insert(verificationTokens)
+      .values(token)
+      .returning();
     return created;
   }
 
-  async getVerificationToken(adminId: number, type: string, code: string): Promise<VerificationToken | undefined> {
+  async getVerificationToken(
+    adminId: number,
+    type: string,
+    code: string
+  ): Promise<VerificationToken | undefined> {
     const [token] = await db
       .select()
       .from(verificationTokens)
@@ -122,48 +161,69 @@ export class DatabaseStorage implements IStorage {
     return token || undefined;
   }
 
-  async deleteVerificationTokensByType(adminId: number, type: string): Promise<void> {
+  async deleteVerificationTokensByType(
+    adminId: number,
+    type: string
+  ): Promise<void> {
     await db
       .delete(verificationTokens)
-      .where(and(eq(verificationTokens.adminId, adminId), eq(verificationTokens.type, type)));
+      .where(
+        and(
+          eq(verificationTokens.adminId, adminId),
+          eq(verificationTokens.type, type)
+        )
+      );
   }
 
   async deleteExpiredTokens(): Promise<void> {
-    await db.delete(verificationTokens).where(lt(verificationTokens.expiresAt, new Date()));
+    await db
+      .delete(verificationTokens)
+      .where(lt(verificationTokens.expiresAt, new Date()));
   }
 
   async createServer(adminId: number, name: string): Promise<Server> {
     const webhookId = nanoid(32);
-    const [server] = await db.insert(servers).values({
-      adminId,
-      name,
-      webhookId,
-      isActive: true,
-    }).returning();
+    const [server] = await db
+      .insert(servers)
+      .values({
+        adminId,
+        name,
+        webhookId,
+        isActive: true,
+      })
+      .returning();
     return server;
   }
 
   async getServersByAdminId(adminId: number): Promise<ServerWithAdmins[]> {
-    const ownedServers = await db.select().from(servers).where(eq(servers.adminId, adminId));
+    const ownedServers = await db
+      .select()
+      .from(servers)
+      .where(eq(servers.adminId, adminId));
     const memberServers = await db
       .select({ server: servers })
       .from(serverAdmins)
       .innerJoin(servers, eq(serverAdmins.serverId, servers.id))
       .where(eq(serverAdmins.adminId, adminId));
-    
+
     const allServerIds = new Set([
-      ...ownedServers.map(s => s.id),
-      ...memberServers.map(s => s.server.id)
+      ...ownedServers.map((s) => s.id),
+      ...memberServers.map((s) => s.server.id),
     ]);
-    
+
     const result: ServerWithAdmins[] = [];
     for (const serverId of Array.from(allServerIds)) {
-      const server = ownedServers.find(s => s.id === serverId) || memberServers.find(s => s.server.id === serverId)?.server;
+      const server =
+        ownedServers.find((s) => s.id === serverId) ||
+        memberServers.find((s) => s.server.id === serverId)?.server;
       if (!server) continue;
-      
-      const [countResult] = await db.select({ count: count() }).from(players).where(eq(players.serverId, server.id));
+
+      const [countResult] = await db
+        .select({ count: count() })
+        .from(players)
+        .where(eq(players.serverId, server.id));
       const serverAdminsList = await this.getServerAdmins(server.id);
-      
+
       result.push({
         ...server,
         playerCount: countResult?.count || 0,
@@ -175,7 +235,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getServerByWebhookId(webhookId: string): Promise<Server | undefined> {
-    const [server] = await db.select().from(servers).where(eq(servers.webhookId, webhookId));
+    const [server] = await db
+      .select()
+      .from(servers)
+      .where(eq(servers.webhookId, webhookId));
     return server || undefined;
   }
 
@@ -184,7 +247,10 @@ export class DatabaseStorage implements IStorage {
     return server || undefined;
   }
 
-  async regenerateWebhookId(serverId: number, adminId: number): Promise<Server | undefined> {
+  async regenerateWebhookId(
+    serverId: number,
+    adminId: number
+  ): Promise<Server | undefined> {
     const newWebhookId = nanoid(32);
     const [updated] = await db
       .update(servers)
@@ -202,11 +268,17 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getPlayersByServerId(serverId: number): Promise<PlayerWithLatestSnapshot[]> {
-    const allPlayers = await db.select().from(players).where(eq(players.serverId, serverId)).orderBy(desc(players.lastSeen));
-    
+  async getPlayersByServerId(
+    serverId: number
+  ): Promise<PlayerWithLatestSnapshot[]> {
+    const allPlayers = await db
+      .select()
+      .from(players)
+      .where(eq(players.serverId, serverId))
+      .orderBy(desc(players.lastSeen));
+
     const result: PlayerWithLatestSnapshot[] = [];
-    
+
     for (const player of allPlayers) {
       const [latestSnapshot] = await db
         .select()
@@ -214,13 +286,13 @@ export class DatabaseStorage implements IStorage {
         .where(eq(playerSnapshots.playerId, player.id))
         .orderBy(desc(playerSnapshots.createdAt))
         .limit(1);
-      
+
       result.push({
         ...player,
         latestSnapshot: latestSnapshot || null,
       });
     }
-    
+
     return result;
   }
 
@@ -229,10 +301,14 @@ export class DatabaseStorage implements IStorage {
     return player || undefined;
   }
 
-  async getPlayerBySteamIdAndServerId(steamId: string, serverId: number): Promise<Player | undefined> {
-    const [player] = await db.select().from(players).where(
-      and(eq(players.steamId, steamId), eq(players.serverId, serverId))
-    );
+  async getPlayerBySteamIdAndServerId(
+    steamId: string,
+    serverId: number
+  ): Promise<Player | undefined> {
+    const [player] = await db
+      .select()
+      .from(players)
+      .where(and(eq(players.steamId, steamId), eq(players.serverId, serverId)));
     return player || undefined;
   }
 
@@ -242,18 +318,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePlayerLastSeen(id: number): Promise<void> {
-    await db.update(players).set({ lastSeen: new Date() }).where(eq(players.id, id));
+    await db
+      .update(players)
+      .set({ lastSeen: new Date() })
+      .where(eq(players.id, id));
   }
 
-  async getPlayerSnapshots(playerId: number, limit: number = 100, days?: number): Promise<PlayerSnapshot[]> {
+  async getPlayerSnapshots(
+    playerId: number,
+    limit: number = 100,
+    days?: number
+  ): Promise<PlayerSnapshot[]> {
     const conditions = [eq(playerSnapshots.playerId, playerId)];
-    
+
     if (days && days > 0) {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
       conditions.push(gte(playerSnapshots.createdAt, cutoffDate));
     }
-    
+
     return await db
       .select()
       .from(playerSnapshots)
@@ -262,19 +345,33 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async createPlayerSnapshot(snapshot: InsertPlayerSnapshot): Promise<PlayerSnapshot> {
-    const [created] = await db.insert(playerSnapshots).values(snapshot).returning();
+  async createPlayerSnapshot(
+    snapshot: InsertPlayerSnapshot
+  ): Promise<PlayerSnapshot> {
+    const [created] = await db
+      .insert(playerSnapshots)
+      .values(snapshot)
+      .returning();
     return created;
   }
 
-  async addServerAdmin(serverId: number, adminId: number, role: string = "member"): Promise<boolean> {
+  async addServerAdmin(
+    serverId: number,
+    adminId: number,
+    role: string = "member"
+  ): Promise<boolean> {
     const existing = await db
       .select()
       .from(serverAdmins)
-      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)));
-    
+      .where(
+        and(
+          eq(serverAdmins.serverId, serverId),
+          eq(serverAdmins.adminId, adminId)
+        )
+      );
+
     if (existing.length > 0) return false;
-    
+
     await db.insert(serverAdmins).values({ serverId, adminId, role });
     return true;
   }
@@ -282,7 +379,12 @@ export class DatabaseStorage implements IStorage {
   async removeServerAdmin(serverId: number, adminId: number): Promise<boolean> {
     const result = await db
       .delete(serverAdmins)
-      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)))
+      .where(
+        and(
+          eq(serverAdmins.serverId, serverId),
+          eq(serverAdmins.adminId, adminId)
+        )
+      )
       .returning();
     return result.length > 0;
   }
@@ -301,19 +403,24 @@ export class DatabaseStorage implements IStorage {
       .from(serverAdmins)
       .innerJoin(admins, eq(serverAdmins.adminId, admins.id))
       .where(eq(serverAdmins.serverId, serverId));
-    
+
     return result;
   }
 
   async isServerAdmin(serverId: number, adminId: number): Promise<boolean> {
     const server = await this.getServerById(serverId);
     if (server?.adminId === adminId) return true;
-    
+
     const [result] = await db
       .select()
       .from(serverAdmins)
-      .where(and(eq(serverAdmins.serverId, serverId), eq(serverAdmins.adminId, adminId)));
-    
+      .where(
+        and(
+          eq(serverAdmins.serverId, serverId),
+          eq(serverAdmins.adminId, adminId)
+        )
+      );
+
     return !!result;
   }
 
