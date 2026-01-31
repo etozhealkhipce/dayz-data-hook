@@ -31,6 +31,9 @@ app:
   env:
     NODE_ENV: production
     PORT: "5000"
+    PGHOST: dayz-tracker-db
+    PGPORT: "5432"
+    PGDATABASE: dayz_tracker
   envFrom:
     - secretRef:
         name: dayz-tracker-app-secrets

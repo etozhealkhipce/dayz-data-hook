@@ -39,7 +39,7 @@ jobs:
       - name: SECRETS
         id: secrets
         run: |
-          IFS=',' read -ra SECRET_NAMES <<< "DATABASE_URL,PGHOST,PGPORT,PGDATABASE,PGUSER,PGPASSWORD,SESSION_SECRET,RESEND_API_KEY,RESEND_FROM_EMAIL"
+          IFS=',' read -ra SECRET_NAMES <<< "PGUSER,PGPASSWORD,SESSION_SECRET,RESEND_API_KEY,RESEND_FROM_EMAIL"
 
           cat > /tmp/secrets.json << 'SECRETS_EOF'
           ${{ toJSON(secrets) }}
@@ -92,10 +92,10 @@ jobs:
             EOF
               echo "SECRETS CREATED FOR dayz-tracker-app"
 
-              # Database secrets - нужны POSTGRES_* переменные
+              # Database secrets - POSTGRES_USER и POSTGRES_PASSWORD из секретов, DB захардкожен
               PGUSER=$(echo "$SECRET_DATA" | base64 -d | grep "PGUSER:" | awk '{print $2}')
-              PGDATABASE=$(echo "$SECRET_DATA" | base64 -d | grep "PGDATABASE:" | awk '{print $2}')
               PGPASSWORD=$(echo "$SECRET_DATA" | base64 -d | grep "PGPASSWORD:" | awk '{print $2}')
+              PGDATABASE_ENCODED=$(echo -n "dayz_tracker" | base64 -w 0)
 
               cat << EOF | kubectl apply -f -
             apiVersion: v1
@@ -106,7 +106,7 @@ jobs:
             type: Opaque
             data:
               POSTGRES_USER: ${PGUSER}
-              POSTGRES_DB: ${PGDATABASE}
+              POSTGRES_DB: ${PGDATABASE_ENCODED}
               POSTGRES_PASSWORD: ${PGPASSWORD}
             EOF
               echo "SECRETS CREATED FOR dayz-tracker-db"
