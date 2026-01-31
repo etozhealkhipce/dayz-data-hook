@@ -50,8 +50,9 @@ RUN npm run build
 FROM base AS production
 WORKDIR /app
 
-# tini, wget, postgresql-client (для init-контейнера миграций: pg_isready + drizzle-kit push)
-RUN apk add --no-cache tini wget postgresql-client && \
+# tini, wget, postgresql-client, nginx
+RUN apk add --no-cache tini wget postgresql-client nginx && \
+    mkdir -p /var/log/nginx && \
     rm -rf /var/cache/apk/* /tmp/*
 
 # Production dependencies (только runtime, без dev)
@@ -65,11 +66,14 @@ COPY --from=build /build/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /build/shared ./shared
 COPY package.json ./
 
+# Nginx config
+COPY nginx.conf /etc/nginx/nginx.conf
+
 ENV NODE_ENV=production
 ENV PORT=5000
 
-EXPOSE 5000
+EXPOSE 80
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/index.cjs"]
+CMD ["sh", "-c", "node dist/index.cjs & nginx -g 'daemon off;'"]
 

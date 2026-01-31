@@ -2,7 +2,7 @@ app:
   name: dayz-tracker-app
   namespace: sskd
   replicas: 1
-  port: 5000
+  port: 80
   healthPath: /api/health
 
   image:
