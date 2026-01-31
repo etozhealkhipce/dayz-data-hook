@@ -27,6 +27,10 @@ app:
           echo "RUNNING MIGRATIONS..."
           npx drizzle-kit push
           echo "MIGRATIONS COMPLETE"
+      env:
+        PGHOST: dayz-tracker-db
+        PGPORT: "5432"
+        PGDATABASE: dayz_tracker
 
   env:
     NODE_ENV: production
